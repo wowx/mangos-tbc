@@ -24,7 +24,6 @@ void CreatePet(Player* player, Creature* creature, uint32 entry)
     Map *map = player->GetMap();
     // Creature* creatureTarget = (Creature*)entry;
     Creature* creatureTarget = creature->SummonCreature(entry, player->GetPositionX(), player->GetPositionY() - 2, player->GetPositionZ(), player->GetOrientation(), TEMPSPAWN_TIMED_OOC_DESPAWN, 10); // TEMPSPAWN_TIMED_OOC_DESPAWN, 0
-    Creature* creatureTarget = creature->SummonCreature(entry, player->GetPositionX(), player->GetPositionY() - 2, player->GetPositionZ(), player->GetOrientation(), TEMPSPAWN_TIMED_OOC_DESPAWN, 10);
     if (!creatureTarget) return;
 
     // Caster must be player, checked in Spell::CheckCast
