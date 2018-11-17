@@ -40,6 +40,7 @@
 #include "Chat/Chat.h"
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
+#include "Cinematics/CinematicMgr.h"
 
 #include<vector>
 
@@ -866,6 +867,8 @@ class TradeData
 class Player : public Unit
 {
         friend class WorldSession;
+        friend class CinematicMgr;
+
         friend void Item::AddToUpdateQueueOf(Player* player);
         friend void Item::RemoveFromUpdateQueueOf(Player* player);
     public:
@@ -1582,6 +1585,8 @@ class Player : public Unit
 
         void UpdateClientAuras();
         void SendPetBar();
+        void StartCinematic();
+        void StopCinematic();
         bool UpdateSkill(uint32 skill_id, uint32 step);
         bool UpdateSkillPro(uint16 SkillId, int32 Chance, uint32 step);
 
@@ -1613,7 +1618,7 @@ class Player : public Unit
         void UpdateRating(CombatRating cr);
         void UpdateAllRatings();
 
-        void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, float& min_damage, float& max_damage);
+        void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, float& min_damage, float& max_damage, uint8 index = 0);
 
         void UpdateDefenseBonusesMod();
         float GetMeleeCritFromAgility() const;
@@ -2070,7 +2075,7 @@ class Player : public Unit
         void ResummonPetTemporaryUnSummonedIfAny();
         bool IsPetNeedBeTemporaryUnsummoned() const;
 
-        void SendCinematicStart(uint32 CinematicSequenceId) const;
+        void SendCinematicStart(uint32 CinematicSequenceId);
 
         /*********************************************************/
         /***                 INSTANCE SYSTEM                   ***/
@@ -2389,6 +2394,8 @@ class Player : public Unit
         InventoryResult _CanStoreItem_InBag(uint8 bag, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool merge, bool non_specialized, Item* pSrcItem, uint8 skip_bag, uint8 skip_slot) const;
         InventoryResult _CanStoreItem_InInventorySlots(uint8 slot_begin, uint8 slot_end, ItemPosCountVec& dest, ItemPrototype const* pProto, uint32& count, bool merge, Item* pSrcItem, uint8 skip_bag, uint8 skip_slot) const;
         Item* _StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool update);
+
+        CinematicMgrUPtr m_cinematicMgr;
 
         void AdjustQuestReqItemCount(Quest const* pQuest, QuestStatusData& questStatusData);
 
