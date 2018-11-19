@@ -909,6 +909,10 @@ void Loot::AddItem(uint32 itemid, uint32 count, uint32 randomSuffix, int32 rando
         LootItem* lootItem = new LootItem(itemid, count, randomSuffix, randomPropertyId, m_maxSlot++);
 
         m_lootItems.push_back(lootItem);
+
+        // add permission to pick this item to loot owner
+        for (auto allowedGuid : m_ownerSet)
+            lootItem->allowedGuid.emplace(allowedGuid);
     }
 }
 
@@ -1424,7 +1428,8 @@ void Loot::ShowContentTo(Player* plr)
     {
         if (!m_isChest)
         {
-            if (!CanLoot(plr))
+            // for item loot that might be empty we should not display error but instead send empty loot window
+            if (!m_lootItems.empty() && !CanLoot(plr))
             {
                 Release(plr);
                 sLog.outError("Loot::ShowContentTo()> %s is trying to open a loot without credential", plr->GetGuidStr().c_str());
