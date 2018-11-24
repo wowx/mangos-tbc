@@ -27,6 +27,7 @@
 #include "Server/SQLStorages.h"
 #include "BattleGround/BattleGroundAV.h"
 #include "Entities/ItemEnchantmentMgr.h"
+#include "Tools/Language.h"
 
 INSTANTIATE_SINGLETON_1(LootMgr);
 
@@ -428,14 +429,6 @@ bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTar
 
 LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const* loot) const
 {
-    // GM can see all loot items in any corpses
-    if (player->isGameMaster())
-    {
-        if (IsAllowed(player, loot))
-            return LOOT_SLOT_NORMAL;
-        return LOOT_SLOT_VIEW;
-    }
-
     // Master looter needs to see quest/conditional items above threshold so he can distribute them
     if (!IsAllowed(player, loot) && (loot->m_lootMethod != MASTER_LOOT || player->GetObjectGuid() != loot->m_masterOwnerGuid || allowedGuid.empty()))
         return MAX_LOOT_SLOT_TYPE;
@@ -451,39 +444,6 @@ LootSlotType LootItem::GetSlotTypeForSharedLoot(Player const* player, Loot const
             case NOT_GROUP_TYPE_LOOT:
             case FREE_FOR_ALL:
                 return LOOT_SLOT_OWNER;
-
-            case MASTER_LOOT:
-                if (!IsAllowed(player, loot))
-                {
-                    if (loot->m_isChest)
-                        return LOOT_SLOT_MASTER;
-
-                    if (!isUnderThreshold && player->GetObjectGuid() == loot->m_masterOwnerGuid && !allowedGuid.empty())
-                        return LOOT_SLOT_MASTER;
-
-                    return MAX_LOOT_SLOT_TYPE;
-                }
-
-                if (isUnderThreshold)
-                {
-                    if (loot->m_isChest)
-                        return LOOT_SLOT_OWNER;
-
-                    // Check if its turn of that player to loot a not party loot. The loot may be released or the item may be passed by currentLooter
-                    if (isReleased || currentLooterPass || loot->m_currentLooterGuid == player->GetObjectGuid())
-                        return LOOT_SLOT_OWNER;
-                    return MAX_LOOT_SLOT_TYPE;
-                }
-
-                if (player->GetObjectGuid() == loot->m_masterOwnerGuid)
-                    return LOOT_SLOT_MASTER;
-
-                // give a chance to let others just see the content of the loot
-                if (isBlocked || sWorld.getConfig(CONFIG_BOOL_CORPSE_ALLOW_ALL_ITEMS_SHOW_IN_MASTER_LOOT))
-                    return LOOT_SLOT_VIEW;
-
-                return MAX_LOOT_SLOT_TYPE;
-                break;
 
             default:
                 if (loot->m_isChest)
@@ -1039,9 +999,6 @@ bool Loot::IsLootedForAll() const
 
 bool Loot::CanLoot(Player const* player)
 {
-    if (player->isGameMaster())
-        return true;
-
     ObjectGuid const& playerGuid = player->GetObjectGuid();
 
     // not in Guid list of possible owner mean cheat
@@ -1187,12 +1144,6 @@ void Loot::SetPlayerIsNotLooting(Player* player)
 
 void Loot::Release(Player* player)
 {
-    if (player->isGameMaster())
-    {
-        SetPlayerIsNotLooting(player);
-        return;
-    }
-
     bool updateClients = false;
     if (player->GetObjectGuid() == m_currentLooterGuid)
     {
@@ -1424,47 +1375,44 @@ void Loot::Release(Player* player)
 // Popup windows with loot content
 void Loot::ShowContentTo(Player* plr)
 {
-    if (!plr->isGameMaster())
+    if (!m_isChest)
     {
-        if (!m_isChest)
+        // for item loot that might be empty we should not display error but instead send empty loot window
+        if (!m_lootItems.empty() && !CanLoot(plr))
         {
-            // for item loot that might be empty we should not display error but instead send empty loot window
-            if (!m_lootItems.empty() && !CanLoot(plr))
-            {
-                Release(plr);
-                sLog.outError("Loot::ShowContentTo()> %s is trying to open a loot without credential", plr->GetGuidStr().c_str());
-                return;
-            }
-
-            // add this player to the the openers list of this loot
-            m_playersOpened.emplace(plr->GetObjectGuid());
-        }
-        else
-        {
-            if (static_cast<GameObject*>(m_lootTarget)->IsInUse())
-            {
-                SendReleaseFor(plr);
-                return;
-            }
-
-            if (m_ownerSet.find(plr->GetObjectGuid()) == m_ownerSet.end())
-                SetGroupLootRight(plr);
+            SendReleaseFor(plr);
+            sLog.outError("Loot::ShowContentTo()> %s is trying to open a loot without credential", plr->GetGuidStr().c_str());
+            return;
         }
 
-        if (m_lootMethod != NOT_GROUP_TYPE_LOOT && !m_isChecked)
+        // add this player to the the openers list of this loot
+        m_playersOpened.emplace(plr->GetObjectGuid());
+    }
+    else
+    {
+        if (static_cast<GameObject*>(m_lootTarget)->IsInUse())
         {
-            GroupCheck();
-            switch (m_lootMethod)
+            SendReleaseFor(plr);
+            return;
+        }
+
+        if (m_ownerSet.find(plr->GetObjectGuid()) == m_ownerSet.end())
+            SetGroupLootRight(plr);
+    }
+
+    if (m_lootMethod != NOT_GROUP_TYPE_LOOT && !m_isChecked)
+    {
+        GroupCheck();
+        switch (m_lootMethod)
+        {
+            case NEED_BEFORE_GREED:
+            case GROUP_LOOT:
             {
-                case NEED_BEFORE_GREED:
-                case GROUP_LOOT:
-                {
-                    CheckIfRollIsNeeded(plr);               // check if there is the need to start a roll
-                    break;
-                }
-                default:
-                    break;
+                CheckIfRollIsNeeded(plr);               // check if there is the need to start a roll
+                break;
             }
+            default:
+                break;
         }
     }
 
@@ -1995,7 +1943,10 @@ InventoryResult Loot::SendItem(Player* target, uint32 itemSlot)
 InventoryResult Loot::SendItem(Player* target, LootItem* lootItem)
 {
     if (!lootItem)
+    {
+        SendReleaseFor(target);
         return EQUIP_ERR_ITEM_NOT_FOUND;
+    }
 
     bool playerGotItem = false;
     InventoryResult msg = EQUIP_ERR_CANT_DO_RIGHT_NOW;
@@ -2229,6 +2180,41 @@ bool Loot::IsItemAlreadyIn(uint32 itemId) const
             return true;
     }
     return false;
+}
+
+void Loot::PrintLootList(ChatHandler& chat, WorldSession* session) const
+{
+    if (!session)
+    {
+        chat.SendSysMessage("Error you have to be in game for this command.");
+        return;
+    }
+
+    if (m_gold == 0)
+        chat.PSendSysMessage("Loot have no money");
+    else
+        chat.PSendSysMessage("Loot have (%u)coppers", m_gold);
+
+    if (m_lootItems.empty())
+    {
+        chat.PSendSysMessage("Loot have no item.");
+        return;
+    }
+
+    for (auto lootItem : m_lootItems)
+    {
+        uint32 itemId = lootItem->itemId;
+        ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype >(itemId);
+        if (!pProto)
+            continue;
+
+        int loc_idx = session->GetSessionDbLocaleIndex();
+
+        std::string name = pProto->Name1;
+        sObjectMgr.GetItemLocaleStrings(itemId, loc_idx, &name);
+        std::string count = "x" + std::to_string(lootItem->count);
+        chat.PSendSysMessage(LANG_ITEM_LIST_CHAT, itemId, itemId, name.c_str(), count.c_str());
+    }
 }
 
 // fill in the bytebuffer with loot content for specified player

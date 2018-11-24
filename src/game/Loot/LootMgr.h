@@ -34,6 +34,7 @@ class LootStore;
 class WorldObject;
 class LootTemplate;
 class Loot;
+class WorldSession;
 struct LootItem;
 struct ItemPrototype;
 
@@ -309,7 +310,9 @@ class Loot
         void GetLootItemsListFor(Player* player, LootItemList& lootList);
         void SetGoldAmount(uint32 _gold);
         void SendGold(Player* player);
+        void SendReleaseFor(Player* plr);
         bool IsItemAlreadyIn(uint32 itemId) const;
+        void PrintLootList(ChatHandler& chat, WorldSession* session) const;
         uint32 GetGoldAmount() const { return m_gold; }
         LootType GetLootType() const { return m_lootType; }
         LootItem* GetLootItemInSlot(uint32 itemSlot);
@@ -330,7 +333,6 @@ class Loot
         bool IsLootedFor(Player const* player) const;
         bool IsLootedForAll() const;
         void SendReleaseFor(ObjectGuid const& guid);
-        void SendReleaseFor(Player* plr);
         void SendReleaseForAll();
         void SendAllowedLooter();
         void NotifyMoneyRemoved();
