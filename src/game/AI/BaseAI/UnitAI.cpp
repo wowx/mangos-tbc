@@ -40,7 +40,8 @@ UnitAI::UnitAI(Unit* unit) :
     m_dismountOnAggro(true),
     m_meleeEnabled(true),
     m_reactState(REACT_AGGRESSIVE),
-    m_combatScriptHappening(false)
+    m_combatScriptHappening(false),
+    m_currentAIOrder(ORDER_NONE)
 {
 }
 
@@ -117,7 +118,7 @@ CanCastResult UnitAI::CanCastSpell(Unit* target, const SpellEntry* spellInfo, bo
         if (m_unit->GetPower((Powers)spellInfo->powerType) < Spell::CalculatePowerCost(spellInfo, m_unit))
             return CAST_FAIL_POWER;
 
-        if (target && !IsIgnoreLosSpellCast(spellInfo) && !m_unit->IsWithinLOSInMap(target) && m_unit != target)
+        if (target && !IsIgnoreLosSpellCast(spellInfo) && !m_unit->IsWithinLOSInMap(target, true) && m_unit != target)
             return CAST_FAIL_NOT_IN_LOS;
 
         if (!m_unit->IsSpellReady(*spellInfo))
@@ -231,7 +232,7 @@ void UnitAI::AttackStart(Unit* who)
 
 bool UnitAI::DoMeleeAttackIfReady() const
 {
-    return m_unit->hasUnitState(UNIT_STAT_MELEE_ATTACKING) && m_unit->UpdateMeleeAttackingState();
+    return m_unit->hasUnitState(UNIT_STAT_MELEE_ATTACKING) && GetAIOrder() == ORDER_NONE && m_unit->UpdateMeleeAttackingState();
 }
 
 void UnitAI::SetCombatMovement(bool enable, bool stopOrStartMovement /*=false*/)
@@ -371,17 +372,11 @@ void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
     {
         if (me->IsWithinDistInMap(who, distance) && me->IsWithinLOSInMap(who))
         {
-            if (!me->getVictim())
+            if (me->CanAssistInCombatAgainst(who, victim))
             {
-                if (me->GetMap()->Instanceable()) // Instanceable case ignore family/faction checks
-                    AttackStart(victim);
-                else // In non-instanceable creature must belong to same family and faction to attack player.
-                {
-                    if (me->GetTypeId() == TYPEID_UNIT && who->GetTypeId() == TYPEID_UNIT
-                            && me->getFaction() == who->getFaction()
-                            && static_cast<Creature*>(me)->GetCreatureInfo()->Family == static_cast<Creature*>(who)->GetCreatureInfo()->Family)
-                        AttackStart(victim);
-                }
+                AttackStart(victim);
+                if (who->AI() && who->AI()->GetAIOrder() == ORDER_FLEEING)
+                    who->GetMotionMaster()->InterruptFlee();
             }
         }
     }
@@ -521,7 +516,7 @@ void UnitAI::SendAIEvent(AIEventType eventType, Unit* invoker, Unit* receiver, u
 
 bool UnitAI::IsVisible(Unit* pl) const
 {
-    return m_unit->IsWithinDist(pl, m_visibilityDistance) && pl->isVisibleForOrDetect(m_unit, m_unit, true);
+    return m_unit->IsWithinDist(pl, m_visibilityDistance) && pl->IsVisibleForOrDetect(m_unit, m_unit, true);
 }
 
 Unit* UnitAI::DoSelectLowestHpFriendly(float range, float minMissing, bool percent)
@@ -573,4 +568,22 @@ void UnitAI::DoStartMovement(Unit* victim)
 {
     if (victim)
         m_unit->GetMotionMaster()->MoveChase(victim, m_attackDistance, m_attackAngle, m_moveFurther, !m_chaseRun);
+}
+
+void UnitAI::TimedFleeingEnded()
+{
+    SetAIOrder(ORDER_NONE);
+    SetCombatScriptStatus(false);
+    DoStartMovement(m_unit->getVictim());
+}
+
+void UnitAI::DoFlee()
+{
+    Unit* victim = m_unit->getVictim();
+    if (!victim)
+        return;
+
+    SetAIOrder(ORDER_FLEEING);
+    SetCombatScriptStatus(true);
+    m_unit->SetFeared(true, victim->GetObjectGuid(), 0, sWorld.getConfig(CONFIG_UINT32_CREATURE_FAMILY_FLEE_DELAY));
 }

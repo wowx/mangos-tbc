@@ -437,7 +437,7 @@ Unit::~Unit()
     MANGOS_ASSERT(m_deletedHolders.empty());
 }
 
-void Unit::Update(uint32 update_diff, uint32 p_time)
+void Unit::Update(const uint32 diff)
 {
     if (!IsInWorld())
         return;
@@ -452,20 +452,21 @@ void Unit::Update(uint32 update_diff, uint32 p_time)
     // WARNING! Order of execution here is important, do not change.
     // Spells must be processed with event system BEFORE they go to _UpdateSpells.
     // Or else we may have some SPELL_STATE_FINISHED spells stalled in pointers, that is bad.
-    UpdateCooldowns(GetMap()->GetCurrentClockTime());
     m_spellUpdateHappening = true;
-    m_Events.Update(update_diff);
-    _UpdateSpells(update_diff);
+
+    UpdateCooldowns(GetMap()->GetCurrentClockTime());
+    m_Events.Update(diff);
+    _UpdateSpells(diff);
     m_spellUpdateHappening = false;
 
     CleanupDeletedAuras();
 
     if (m_lastManaUseTimer)
     {
-        if (update_diff >= m_lastManaUseTimer)
+        if (diff >= m_lastManaUseTimer)
             m_lastManaUseTimer = 0;
         else
-            m_lastManaUseTimer -= update_diff;
+            m_lastManaUseTimer -= diff;
     }
 
     if (!CanHaveThreatList() && isInCombat())
@@ -477,41 +478,41 @@ void Unit::Update(uint32 update_diff, uint32 p_time)
         if (getHostileRefManager().isEmpty())
         {
             // m_CombatTimer set at aura start and it will be freeze until aura removing
-            if (m_CombatTimer <= update_diff)
+            if (m_CombatTimer <= diff)
                 CombatStop();
             else
-                m_CombatTimer -= update_diff;
+                m_CombatTimer -= diff;
         }
     }
 
     if (uint32 base_att = getAttackTimer(BASE_ATTACK))
     {
-        setAttackTimer(BASE_ATTACK, (update_diff >= base_att ? 0 : base_att - update_diff));
+        setAttackTimer(BASE_ATTACK, (diff >= base_att ? 0 : base_att - diff));
     }
 
     if (uint32 base_att = getAttackTimer(OFF_ATTACK))
     {
-        setAttackTimer(OFF_ATTACK, (update_diff >= base_att ? 0 : base_att - update_diff));
+        setAttackTimer(OFF_ATTACK, (diff >= base_att ? 0 : base_att - diff));
     }
 
     // update abilities available only for fraction of time
-    UpdateReactives(update_diff);
+    UpdateReactives(diff);
 
-    UpdateSplineMovement(p_time);
-    i_motionMaster.UpdateMotion(p_time);
+    UpdateSplineMovement(diff);
+    i_motionMaster.UpdateMotion(diff);
 
     if (AI() && isAlive())
-        AI()->UpdateAI(p_time);   // AI not react good at real update delays (while freeze in non-active part of map)
+        AI()->UpdateAI(diff);   // AI not react good at real update delays (while freeze in non-active part of map)
 
     if (m_evadeTimer)
     {
-        if (m_evadeTimer <= update_diff)
+        if (m_evadeTimer <= diff)
         {
             EvadeTimerExpired();
             m_evadeTimer = 0;
         }
         else
-            m_evadeTimer -= update_diff;
+            m_evadeTimer -= diff;
     }
 
     if (isAlive())
@@ -788,6 +789,11 @@ void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageE
 
     if (absorb && originalDamage > damage)
         *absorb += (originalDamage - damage);
+}
+
+void Unit::Suicide()
+{
+    DealDamage(this, this->GetHealth(), nullptr, INSTAKILL, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
 }
 
 uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss)
@@ -5691,7 +5697,7 @@ void Unit::CasterHitTargetWithSpell(Unit* realCaster, Unit* target, SpellEntry c
             return;
 
         // Hostile spell hits count as attack made against target (if detected), stealth removed at Spell::cast if spell break it
-        const bool attack = (!IsPositiveSpell(spellInfo->Id, realCaster, target) && isVisibleForOrDetect(target, target, false));
+        const bool attack = (!IsPositiveSpell(spellInfo->Id, realCaster, target) && IsVisibleForOrDetect(target, target, false));
 
         if (!spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO))
         {
@@ -7817,8 +7823,27 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
 
     SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
 
-    if (HasCharmer() || (GetTypeId() != TYPEID_PLAYER && ((Creature*)this)->IsPet()))
+    if (HasCharmer() || !GetOwnerGuid().IsEmpty())
+    {
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
+        if (enemy)
+        {
+            Unit* controller = HasCharmer() ? GetCharmer() : GetOwner();
+            if (controller)
+            {
+                if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                    controller->SetInCombatWith(enemy); // player only enters combat
+                else if (controller->isInCombat())
+                {
+                    controller->AddThreat(enemy);
+                    enemy->AddThreat(controller);
+                    enemy->SetInCombatWith(controller);
+                }
+                else
+                    controller->AI()->AttackStart(enemy);
+            }
+        }
+    }
 
     // interrupt all delayed non-combat casts
     for (uint32 i = CURRENT_FIRST_NON_MELEE_SPELL; i < CURRENT_MAX_SPELL; ++i)
@@ -7924,7 +7949,7 @@ int32 Unit::ModifyPower(Powers power, int32 dVal)
     return gain;
 }
 
-bool Unit::isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList, bool is3dDistance) const
+bool Unit::IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList, bool is3dDistance) const
 {
     if (!u || !IsInMap(u))
         return false;
@@ -8031,9 +8056,9 @@ bool Unit::isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
                 // Invisible units, always are visible for units under same invisibility type
                 (m_invisibilityMask & u->m_invisibilityMask) != 0 ||
                 // Invisible units, always are visible for unit that can detect this invisibility (have appropriate level for detect)
-                u->canDetectInvisibilityOf(this) ||
+                u->CanDetectInvisibilityOf(this) ||
                 // Units that can detect invisibility always are visible for units that can be detected
-                canDetectInvisibilityOf(u)))
+                CanDetectInvisibilityOf(u)))
     {
         invisible = false;
     }
@@ -8142,7 +8167,7 @@ void Unit::UpdateVisibilityAndView()
             Aura* aura = (*it);
             Unit* owner = aura->GetCaster();
 
-            if (!owner || !isVisibleForOrDetect(owner, this, false))
+            if (!owner || !IsVisibleForOrDetect(owner, this, false))
             {
                 alist.erase(it);
                 RemoveAura(aura);
@@ -8167,9 +8192,9 @@ void Unit::SetVisibility(UnitVisibility x)
         UpdateVisibilityAndView();
 }
 
-bool Unit::canDetectInvisibilityOf(Unit const* u) const
+bool Unit::CanDetectInvisibilityOf(Unit const* u) const
 {
-    if (uint32 mask = (m_detectInvisibilityMask & u->m_invisibilityMask))
+    if (uint32 mask = (GetInvisibilityDetectMask() & u->GetInvisibilityMask()))
     {
         for (int32 i = 0; i < 32; ++i)
         {
@@ -8183,9 +8208,14 @@ bool Unit::canDetectInvisibilityOf(Unit const* u) const
                 if (iAura->GetModifier()->m_miscvalue == i && invLevel < iAura->GetModifier()->m_amount)
                     invLevel = iAura->GetModifier()->m_amount;
 
-            // find invisibility detect level
+            Unit const* owner = this;
+            if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+                if (Player const* controller = GetControllingPlayer())
+                    owner = controller;
+
+            // find invisibility detect level - this is taken from controlling player or self
             int32 detectLevel = 0;
-            Unit::AuraList const& dAuras = GetAurasByType(SPELL_AURA_MOD_INVISIBILITY_DETECTION);
+            Unit::AuraList const& dAuras = owner->GetAurasByType(SPELL_AURA_MOD_INVISIBILITY_DETECTION);
             for (auto dAura : dAuras)
                 if (dAura->GetModifier()->m_miscvalue == i && detectLevel < dAura->GetModifier()->m_amount)
                     detectLevel = dAura->GetModifier()->m_amount;
@@ -8199,6 +8229,38 @@ bool Unit::canDetectInvisibilityOf(Unit const* u) const
     }
 
     return false;
+}
+
+uint32 Unit::GetInvisibilityDetectMask() const
+{
+    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+    {
+        Player const* controller = GetControllingPlayer();
+        if (controller)
+            return controller->m_detectInvisibilityMask; // directly access value without bypass
+    }
+    return m_detectInvisibilityMask;
+}
+
+void Unit::SetInvisibilityDetectMask(uint32 index, bool apply)
+{
+    if (apply)
+        m_detectInvisibilityMask |= (1 << index);
+    else
+        m_detectInvisibilityMask &= ~(1 << index);
+}
+
+uint32 Unit::GetInvisibilityMask() const
+{
+    return m_invisibilityMask;
+}
+
+void Unit::SetInvisibilityMask(uint32 index, bool apply)
+{
+    if (apply)
+        m_invisibilityMask |= (1 << index);
+    else
+        m_invisibilityMask &= ~(1 << index);
 }
 
 void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
@@ -8915,7 +8977,7 @@ void Unit::ApplyDiminishingAura(DiminishingGroup group, bool apply)
 
 bool Unit::isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const
 {
-    return isVisibleForOrDetect(u, viewPoint, false, inVisibleList, false);
+    return IsVisibleForOrDetect(u, viewPoint, false, inVisibleList, false);
 }
 
 /// returns true if creature can't be seen by alive units
@@ -8943,7 +9005,7 @@ bool Unit::IsOutOfThreatArea(Unit* victim) const
 
     // Todo make vanish to reset combat state/threat/whatever we need to do.
     // This is just workaround here
-    if (!victim->isVisibleForOrDetect(this, this, true))
+    if (!victim->IsVisibleForOrDetect(this, this, true))
         return true;
 
     if (sMapStore.LookupEntry(GetMapId())->IsDungeon())
@@ -9522,17 +9584,19 @@ void CharmInfo::InitPossessCreateSpells()
 {
     InitEmptyActionBar();                                   // charm action bar
 
-    SetActionBar(ACTION_BAR_INDEX_START, COMMAND_ATTACK, ACT_COMMAND);
-
     if (m_unit->GetTypeId() == TYPEID_PLAYER)               // possessed players don't have spells, keep the action bar empty
         return;
 
+    Creature* creature = static_cast<Creature*>(m_unit);
+
     for (uint32 x = 0; x < CREATURE_MAX_SPELLS; ++x)
     {
-        if (IsPassiveSpell(((Creature*)m_unit)->m_spells[x]))
-            m_unit->CastSpell(m_unit, ((Creature*)m_unit)->m_spells[x], TRIGGERED_OLD_TRIGGERED);
+        if (creature->m_spells[x] == 2)
+            SetActionBar(x, COMMAND_ATTACK, ACT_COMMAND);
+        if (IsPassiveSpell(creature->m_spells[x]))
+            m_unit->CastSpell(creature, creature->m_spells[x], TRIGGERED_OLD_TRIGGERED);
         else
-            AddSpellToActionBar(((Creature*)m_unit)->m_spells[x], ACT_PASSIVE, x + 1);
+            AddSpellToActionBar(creature->m_spells[x], ACT_PASSIVE, x);
     }
 }
 
@@ -9555,7 +9619,11 @@ void CharmInfo::InitCharmCreateSpells()
             continue;
         }
 
-        if (IsPassiveSpell(spellId))
+        if (spellId == 2) // hardcoded spell id 2 attack - only for possesss
+            continue;
+
+        SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+        if (IsPassiveSpell(spellInfo))
         {
             m_unit->CastSpell(m_unit, spellId, TRIGGERED_OLD_TRIGGERED);
             m_charmspells[x].SetActionAndType(spellId, ACT_PASSIVE);
@@ -9565,8 +9633,7 @@ void CharmInfo::InitCharmCreateSpells()
             m_charmspells[x].SetActionAndType(spellId, ACT_DISABLED);
 
             ActiveStates newstate;
-            bool onlyselfcast = true;
-            SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+            bool onlyselfcast = true;            
 
             for (uint32 i = 0; i < 3 && onlyselfcast; ++i)  // nonexistent spell will not make any problems as onlyselfcast would be false -> break right away
             {

@@ -1429,8 +1429,19 @@ void Aura::TriggerSpell()
                         break;
 //                    // Mark of Death
 //                    case 37125: break;
-//                    // Arcane Flurry
-//                    case 37268: break;
+                    case 37268:                               // Arcane Flurry (Melee Component)
+                    {
+                        trigger_spell_id = 37271;       // (Range Component, parentspell 37269)
+
+                        if (GetTarget()->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        triggerTarget = ((Creature*)GetTarget())->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, trigger_spell_id, SELECT_FLAG_PLAYER);
+                        if (!triggerTarget)
+                            return;
+
+                        break;
+                    }
                     case 37429:                             // Spout (left)
                     case 37430:                             // Spout (right)
                     {
@@ -1747,28 +1758,29 @@ void Aura::TriggerSpell()
     {
         // for channeled spell cast applied from aura owner to channel target (persistent aura affects already applied to true target)
         // come periodic casts applied to targets, so need select proper caster (ex. 15790)
-        if (IsChanneledSpell(GetSpellProto()) || GetSpellProto()->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA)
-        {
-            // interesting 2 cases: periodic aura at caster of channeled spell
-            if (target->GetObjectGuid() == casterGUID)
-                triggerCaster = target;
+        // interesting 2 cases: periodic aura at caster of channeled spell
+        if (target->GetObjectGuid() == casterGUID)
+            triggerCaster = target;
 
-            switch (triggeredSpellInfo->EffectImplicitTargetA[0])
-            {
-                case TARGET_LOCATION_UNIT_RANDOM_SIDE: // fireball barrage
-                case TARGET_UNIT_ENEMY:
-                case TARGET_UNIT:
-                    triggerCaster = GetCaster();
-                    triggerTarget = target;
-                    break;
-                case TARGET_UNIT_CASTER:
-                    triggerCaster = target;
-                    triggerTarget = target;
-                    break;
-                case TARGET_LOCATION_CASTER_SRC: // TODO: this needs to be done whenever target isnt important, doing it per case for safety
-                    triggerTarget = nullptr;
-                    break;
-            }
+        switch (triggeredSpellInfo->EffectImplicitTargetA[0])
+        {
+            case TARGET_LOCATION_UNIT_RANDOM_SIDE: // fireball barrage
+            case TARGET_UNIT_ENEMY:
+            case TARGET_UNIT:
+                triggerCaster = GetCaster();
+                triggerTarget = triggerCaster->GetTarget(); // This will default to channel target for channels
+                break;
+            case TARGET_UNIT_CASTER:
+                triggerCaster = target;
+                triggerTarget = target;
+                break;
+            case TARGET_LOCATION_DYNOBJ_POSITION:
+                triggerTargetObject = target->GetDynObject(GetId());
+            case TARGET_LOCATION_CASTER_DEST:
+            case TARGET_LOCATION_CASTER_SRC: // TODO: this needs to be done whenever target isnt important, doing it per case for safety
+            default:
+                triggerTarget = nullptr;
+                break;
         }
 
         // Spell exist but require custom code
@@ -1898,6 +1910,7 @@ void Aura::TriggerSpell()
                 return;
             }
             case 33419:                                     // Arcane Missiles - TODO: Review other spells with TARGET_UNIT_ENEMY
+            case 40106:                                     // Merge
             case 42483:                                     // Ooze Channel
             {
                 triggerCaster = GetCaster();
@@ -2685,7 +2698,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
                     if (apply)
                         caster->FixateTarget(target);
-                    else if (target->GetObjectGuid() == caster->GetFixateTargetGuid())
+                    else
                         caster->FixateTarget(nullptr);
 
                     return;
@@ -3937,10 +3950,9 @@ void Aura::HandleInvisibility(bool apply, bool Real)
 {
     Unit* target = GetTarget();
 
+    target->SetInvisibilityMask(m_modifier.m_miscvalue, apply);
     if (apply)
     {
-        target->m_invisibilityMask |= (1 << m_modifier.m_miscvalue);
-
         target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
 
         if (Real && target->GetTypeId() == TYPEID_PLAYER)
@@ -3963,13 +3975,12 @@ void Aura::HandleInvisibility(bool apply, bool Real)
     else
     {
         // recalculate value at modifier remove (current aura already removed)
-        target->m_invisibilityMask = 0;
         Unit::AuraList const& auras = target->GetAurasByType(SPELL_AURA_MOD_INVISIBILITY);
-        for (auto aura : auras)
-            target->m_invisibilityMask |= (1 << aura->GetModifier()->m_miscvalue);
+        for (Aura* aura : auras)
+            target->SetInvisibilityMask(aura->GetModifier()->m_miscvalue, apply);
 
         // only at real aura remove and if not have different invisibility auras.
-        if (Real && target->m_invisibilityMask == 0)
+        if (Real && target->GetInvisibilityMask() == 0)
         {
             // remove glow vision
             if (target->GetTypeId() == TYPEID_PLAYER)
@@ -3990,17 +4001,12 @@ void Aura::HandleInvisibilityDetect(bool apply, bool Real)
 {
     Unit* target = GetTarget();
 
-    if (apply)
+    target->SetInvisibilityDetectMask(m_modifier.m_miscvalue, apply);
+    if (!apply)
     {
-        target->m_detectInvisibilityMask |= (1 << m_modifier.m_miscvalue);
-    }
-    else
-    {
-        // recalculate value at modifier remove (current aura already removed)
-        target->m_detectInvisibilityMask = 0;
         Unit::AuraList const& auras = target->GetAurasByType(SPELL_AURA_MOD_INVISIBILITY_DETECTION);
-        for (auto aura : auras)
-            target->m_detectInvisibilityMask |= (1 << aura->GetModifier()->m_miscvalue);
+        for (Aura* aura : auras)
+            target->SetInvisibilityDetectMask(aura->GetModifier()->m_miscvalue, true);
     }
     if (Real && target->GetTypeId() == TYPEID_PLAYER)
         ((Player*)target)->GetCamera().UpdateVisibilityForOwner();
@@ -7223,6 +7229,9 @@ SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit* target, Wor
         case 24659:                                         // Unstable Power
         case 24662:                                         // Restless Strength
         case 26464:                                         // Mercurial Shield
+        case 32065:                                         // Fungal Decay
+        case 35244:                                         // Choking Vines
+        case 36659:                                         // Tail Sting
             m_stackAmount = m_spellProto->StackAmount;
             break;
     }

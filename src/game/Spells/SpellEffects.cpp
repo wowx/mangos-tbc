@@ -3045,7 +3045,10 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
         case 41967:
         {
             if (Unit* pet = unitTarget->GetPet())
+            {
                 pet->CastSpell(pet, 28305, TRIGGERED_OLD_TRIGGERED);
+                pet->AI()->AttackStart(m_caster->GetTarget());
+            }
             return;
         }
         case 44949:
@@ -4456,6 +4459,8 @@ bool Spell::DoSummonPet(SpellEffectIndex eff_idx)
         return false;
     }
 
+    spawnCreature->SetLoading(true);
+
     // Level of pet summoned
     uint32 level = std::max(m_caster->getLevel() + m_spellInfo->EffectMultipleValue[eff_idx], 1.0f);
 
@@ -4512,6 +4517,7 @@ bool Spell::DoSummonPet(SpellEffectIndex eff_idx)
         if (m_caster->getClass() != CLASS_PRIEST)
             spawnCreature->SavePetToDB(PET_SAVE_AS_CURRENT);
     }
+    spawnCreature->SetLoading(false);
 
     m_spellLog.AddLog(uint32(SPELL_EFFECT_SUMMON), spawnCreature->GetPackGUID());
     return true;
@@ -4860,6 +4866,8 @@ bool Spell::DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntr
             return false;
         }
 
+        spawnCreature->SetLoading(true);
+
         itr->creature = spawnCreature;
 
         spawnCreature->SetRespawnCoord(pos);
@@ -4899,6 +4907,7 @@ bool Spell::DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntr
         if (CharmInfo* charmInfo = spawnCreature->GetCharmInfo())
             charmInfo->SetPetNumber(pet_number, false);
 
+        spawnCreature->SetLoading(false);
         m_caster->AddGuardian(spawnCreature);
     }
 
@@ -5159,6 +5168,7 @@ void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
         return;
     }
 
+    pet->SetLoading(true);
     pet->SetOwnerGuid(plr->GetObjectGuid());
     pet->setFaction(plr->getFaction());
     pet->SetUInt32Value(UNIT_CREATED_BY_SPELL, m_spellInfo->Id);
@@ -5221,6 +5231,7 @@ void Spell::EffectTameCreature(SpellEffectIndex /*eff_idx*/)
     plr->SetPet(pet);
 
     plr->PetSpellInitialize();
+    pet->SetLoading(false);
 
     pet->SavePetToDB(PET_SAVE_AS_CURRENT);
 }
@@ -5601,24 +5612,39 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
     // non-weapon damage
     int32 bonus = spell_bonus + fixed_bonus;
 
-    // apply to non-weapon bonus weapon total pct effect, weapon total flat effect included in weapon damage
-    if (bonus)
+    bool addDamage = false; // hack in place until effect handler is split up
+    switch (m_spellInfo->DmgClass)
     {
-        UnitMods unitMod;
-        switch (m_attackType)
-        {
-            default:
-            case BASE_ATTACK:   unitMod = UNIT_MOD_DAMAGE_MAINHAND; break;
-            case OFF_ATTACK:    unitMod = UNIT_MOD_DAMAGE_OFFHAND;  break;
-            case RANGED_ATTACK: unitMod = UNIT_MOD_DAMAGE_RANGED;   break;
-        }
-
-        float weapon_total_pct  = m_caster->GetModifierValue(unitMod, TOTAL_PCT);
-        bonus = int32(bonus * weapon_total_pct);
+        case SPELL_DAMAGE_CLASS_MELEE:
+        case SPELL_DAMAGE_CLASS_RANGED: addDamage = true; break;
+        case SPELL_DAMAGE_CLASS_MAGIC: break; // TODO: Add behaviour for spell behaviour
+        case SPELL_DAMAGE_CLASS_NONE: break; // do nothing
     }
 
-    // + weapon damage with applied weapon% dmg to base weapon damage in call
-    bonus += int32(m_caster->CalculateDamage(m_attackType, normalized) * weaponDamagePercentMod);
+    if (m_spellInfo->Effect[eff_idx] == SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL)
+        addDamage = true;
+
+    if (addDamage)
+    {
+        // apply to non-weapon bonus weapon total pct effect, weapon total flat effect included in weapon damage
+        if (bonus)
+        {
+            UnitMods unitMod;
+            switch (m_attackType)
+            {
+                default:
+                case BASE_ATTACK:   unitMod = UNIT_MOD_DAMAGE_MAINHAND; break;
+                case OFF_ATTACK:    unitMod = UNIT_MOD_DAMAGE_OFFHAND;  break;
+                case RANGED_ATTACK: unitMod = UNIT_MOD_DAMAGE_RANGED;   break;
+            }
+
+            float weapon_total_pct = m_caster->GetModifierValue(unitMod, TOTAL_PCT);
+            bonus = int32(bonus * weapon_total_pct);
+        }
+
+        // + weapon damage with applied weapon% dmg to base weapon damage in call
+        bonus += int32(m_caster->CalculateDamage(m_attackType, normalized) * weaponDamagePercentMod);
+    }
 
     // total damage
     bonus = int32(bonus * totalDamagePercentMod);
@@ -7997,6 +8023,8 @@ bool Spell::DoSummonCritter(CreatureSummonPositions& list, SummonPropertiesEntry
         return false;
     }
 
+    critter->SetLoading(true);
+
     // itr!
     list[0].creature = critter;
 
@@ -8028,6 +8056,7 @@ bool Spell::DoSummonCritter(CreatureSummonPositions& list, SummonPropertiesEntry
     // NOTE: All companions should have these (creatureinfo needs to be tuned accordingly before we can remove these two lines):
     critter->SetImmuneToNPC(true);
     critter->SetImmuneToPlayer(true);
+    critter->SetLoading(false);
 
     // NOTE: Do not set PvP flags (confirmed) for companions.
 

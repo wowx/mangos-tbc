@@ -146,20 +146,24 @@ inline bool IsDestinationOnlyEffect(SpellEntry const* spellInfo, SpellEffectInde
     {
         case SPELL_EFFECT_TRIGGER_SPELL:
         case SPELL_EFFECT_DUMMY: // special - can be either
-            if (spellInfo->EffectImplicitTargetB[effIdx] == 0)
-            {
-                switch (spellInfo->EffectImplicitTargetA[effIdx])
-                {
-                    case TARGET_ENUM_UNITS_SCRIPT_AOE_AT_DEST_LOC:
-                    case TARGET_LOCATION_CASTER_TARGET_POSITION:
-                        return true;
-                }
-            }
-            return false;
         case SPELL_EFFECT_TRIGGER_MISSILE:
+        {
+            auto& targetA = SpellTargetInfoTable[spellInfo->EffectImplicitTargetA[effIdx]];
+            if (spellInfo->EffectImplicitTargetB[effIdx] == 0)
+                if (targetA.type == TARGET_TYPE_LOCATION)
+                    return true;
+
+            return false;
+        }
+        case SPELL_EFFECT_TRIGGER_SPELL_2: // only one in wotlk and tbc - possibly investigate further
         case SPELL_EFFECT_PERSISTENT_AREA_AURA:
         case SPELL_EFFECT_TRANS_DOOR:
         case SPELL_EFFECT_SUMMON:
+        case SPELL_EFFECT_SUMMON_DEAD_PET:
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT1:
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT2:
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT3:
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT4:
             return true;
         default:
             return false;
@@ -384,6 +388,9 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
     switch (spellInfo->Id)
     {
         case 22856:         // Ice Lock (Guard Slip'kik ice trap in Dire Maul)
+        case 22735:         // Spirit of Runn Tum
+        case 31332:         // Dire Wolf Visual
+        case 31690:         // Putrid Mushroom
         case 32007:         // Mo'arg Engineer Transform Visual
         case 35596:         // Power of the Legion
         case 39311:         // Scrapped Fel Reaver transform aura that is never removed even on evade
@@ -1803,6 +1810,7 @@ inline bool IsSimilarExistingAuraStronger(const Unit* caster, uint32 spellid, co
 DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto, bool triggered);
 bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group);
 DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group);
+bool IsCreatureDRSpell(SpellEntry const* spellInfo);
 
 // Spell affects related declarations (accessed using SpellMgr functions)
 typedef std::map<uint32, uint64> SpellAffectMap;

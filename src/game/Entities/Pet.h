@@ -170,6 +170,7 @@ class Pet : public Creature
         bool LoadPetFromDB(Player* owner, uint32 petentry = 0, uint32 petnumber = 0, bool current = false, uint32 healthPercentage = 0, bool permanentOnly = false, bool forced = false);
         void SavePetToDB(PetSaveMode mode);
         bool isLoading() const { return m_loading; }
+        void SetLoading(bool state) { m_loading = state; }
         void Unsummon(PetSaveMode mode, Unit* owner = nullptr);
         static void DeleteFromDB(uint32 guidlow, bool separate_transaction = true);
         static void DeleteFromDB(Unit* owner, PetSaveMode slot);
@@ -183,7 +184,7 @@ class Pet : public Creature
         Player* GetSpellModOwner() const override;
 
         void SetDeathState(DeathState s) override;          // overwrite virtual Creature::SetDeathState and Unit::SetDeathState
-        void Update(uint32 update_diff, uint32 diff) override;  // overwrite virtual Creature::Update and Unit::Update
+        void Update(const uint32 diff) override;  // overwrite virtual Creature::Update and Unit::Update
 
         uint8 GetPetAutoSpellSize() const { return m_autospells.size(); }
         uint32 GetPetAutoSpellOnPos(uint8 pos) const override

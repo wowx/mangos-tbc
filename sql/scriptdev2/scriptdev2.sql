@@ -131,11 +131,12 @@ UPDATE creature_template SET ScriptName='npc_prof_leather' WHERE entry IN (7866,
 -- UPDATE creature_template SET ScriptName='' WHERE npcflag!=npcflag|65536 AND ScriptName='npc_innkeeper';
 -- UPDATE creature_template SET ScriptName='npc_innkeeper' WHERE npcflag=npcflag|65536;
 UPDATE creature_template SET ScriptName='npc_redemption_target' WHERE entry IN (6172,6177,17542,17768);
-UPDATE creature_template SET ScriptName='npc_burster_worm' WHERE entry IN (16844,16857,16968,18678,21380,21849,22038,22466,22482,23285);
+UPDATE creature_template SET ScriptName='npc_burster_worm' WHERE entry IN (16844,16857,16968,17075,18678,21380,21849,22038,22466,22482,23285);
 UPDATE creature_template SET ScriptName='npc_the_cleaner' WHERE entry=14503;
 UPDATE creature_template SET ScriptName='npc_shaman_earth_elemental' WHERE entry IN(15352); -- greater earth elemental
 UPDATE creature_template SET ScriptName='npc_shaman_fire_elemental' WHERE entry IN(15438); -- greater fire elemental
 UPDATE creature_template SET ScriptName='npc_snakes' WHERE entry IN(19921,19833);
+UPDATE creature_template SET ScriptName='npc_nether_ray' WHERE entry IN(18880,21901,23501);
 
 /*Quest (quest scripts which are not in one zone)*/
 UPDATE creature_template SET ScriptName='npc_quest_attunement' WHERE entry IN(22421,18528,19935);
@@ -603,7 +604,7 @@ UPDATE instance_template SET ScriptName='instance_ramparts' WHERE map=543;
 UPDATE creature_template SET ScriptName='boss_grand_warlock_nethekurse' WHERE entry=16807;
 UPDATE creature_template SET ScriptName='boss_warbringer_omrogg' WHERE entry=16809;
 UPDATE creature_template SET ScriptName='mob_fel_orc_convert' WHERE entry=17083;
-UPDATE creature_template SET ScriptName='mob_lesser_shadow_fissure' WHERE entry=17471;
+UPDATE creature_template SET ScriptName='mob_lesser_shadow_fissure' WHERE entry IN (17471,18370);
 UPDATE creature_template SET ScriptName='mob_omrogg_heads' WHERE entry IN (19523,19524);
 UPDATE creature_template SET ScriptName='boss_warchief_kargath_bladefist' WHERE entry=16808;
 UPDATE instance_template SET ScriptName='instance_shattered_halls' WHERE map=540;
@@ -801,6 +802,8 @@ UPDATE creature_template SET ScriptName='npc_adyen_the_lightwarden' WHERE entry 
 UPDATE creature_template SET ScriptName='npc_kaylaan_the_lost' WHERE entry IN(20794);
 INSERT INTO scripted_areatrigger VALUES
 (4523, 'at_socrethar_seat');
+UPDATE creature_template SET ScriptName='npc_commander_hobb' WHERE entry IN(23434);
+UPDATE creature_template SET ScriptName='npc_commander_arcus' WHERE entry IN(23452);
 
 /* ONYXIA'S LAIR */
 UPDATE instance_template SET ScriptName='instance_onyxias_lair' WHERE map=249;
@@ -896,6 +899,12 @@ UPDATE creature_template SET ScriptName='npc_veneratus_spawn_node' WHERE entry=2
 UPDATE creature_template SET ScriptName='mob_shadowmoon_soulstealer' WHERE entry=22061;
 UPDATE creature_template SET ScriptName='npc_shadowlord_deathwail' WHERE entry=22006;
 UPDATE creature_template SET ScriptName='npc_disobedient_dragonmaw_peon' WHERE entry IN(23311);
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_muckjaw' WHERE entry=23340;
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_trope' WHERE entry=23342;
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_corlok' WHERE entry=23344;
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_ichman' WHERE entry=23345;
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_mulverick' WHERE entry=23346;
+UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_skyshatter' WHERE entry=23348;
 
 /* SHATTRATH */
 UPDATE creature_template SET ScriptName='npc_dirty_larry' WHERE entry=19720;
@@ -2364,7 +2373,26 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1001289,'OWWWW! Ok, ok, me go back to work!',0,0,0,34,'Dosobedient Dragonmaw Peon SAY_BOOTERANG3'),
 (-1001290,'WHY IT PUT DA BOOTERANG ON DA SKIN?? WHY??',0,0,0,34,'Dosobedient Dragonmaw Peon SAY_BOOTERANG4'),
 (-1001291,'AYAYA! One day me have dat booterang...',0,0,0,34,'Dosobedient Dragonmaw Peone SAY_BOOTERANG5'),
-(-1001292,'OOF! Booterang hurted me! Me tink work better den booterang!',0,0,0,34,'Dosobedient Dragonmaw Peon SAY_BOOTERANG6');
+(-1001292,'OOF! Booterang hurted me! Me tink work better den booterang!',0,0,0,34,'Dosobedient Dragonmaw Peon SAY_BOOTERANG6'),
+(-1001293,'The Dragonmaw must be stopped...',0,1,0,22,'Commander Arcus SAY_EVENT_ACCEPT'),
+(-1001294,'Stand tall, soldiers. Show them no quarter!',0,0,0,5,'Commander Arcus SAY_EVENT_START'),
+(-1001295,'Victory to the Aldor! The Dragonmaw have been defeated!',0,1,0,0,'Commander Arcus SAY_EVENT_END'),
+(-1001296,'Defenders, show these mongrels the fury of a Scryer!',0,1,0,22,'Commander Hobb SAY_EVENT_ACCEPT'),
+(-1001297,'Stand tall, soldiers. Show them no quarter!',0,0,0,1,'Commander Hobb SAY_EVENT_START'),
+(-1001298,'Victory to the Scryers! The Dragonmaw have been defeated!',0,1,0,0,'Commander Hobb SAY_EVENT_END'),
+(-1001299,'I may be old but I can still take on a young whippersnapper like you, $n. Try not to fall behind...',0,0,0,0,'Murg "Oldie" Muckjaw SAY_MUCKJAW_START'),
+(-1001300,'Well, you won... I guess.',0,0,0,0,'Murg "Oldie" Muckjaw SAY_MUCKJAW_END'),
+(-1001301,'Trope will show you how to fly like a Dragonmaw... You will show Trope how to die like a scrub.',0,0,0,1,'Trope the Filth-Belcher SAY_TROPE_START'),
+(-1001302,'You did well. Certainly a surprise to Trope... Report back to Ja''y.',0,0,0,0,'Trope the Filth-Belcher SAY_TROPE_END'),
+(-1001303,'Let''s get this over with...',0,0,0,1,'Corlok the Vet SAY_START_CORLOK'),
+(-1001304,'You put up a hell of a fight, newbie. Hell of a fight...',0,0,0,1,'Corlok the Vet SAY_END_CORLOK'),
+(-1001305,'I''m taking this back to the old school. I''ll be the Alliance and you be Frostwolf Village. BOMBS AWAY!',0,0,0,1,'Wing Commander Ichman SAY_START_ICHMAN'),
+(-1001306,'Thank you for that... It was humbling to be served in such a manner.',0,0,0,1,'Wing Commander Ichman SAY_END_ICHMAN'),
+(-1001307,'You''re in for a rough ride, $n. I hope you''ve already made funeral arrangements.',0,0,0,1,'Wing Commander Mulverick SAY_START_MULVERICK'),
+(-1001308,'You''re the best I''ve ever seen. I can''t believe I''m saying this but you might have a chance against Skyshatter. And hey, if that doesn''t go so well you can be my wing man...',0,0,0,1,'Wing Commander Mulverick SAY_END_MULVERICK'),
+(-1001309,'Prepare a funeral pyre! $n has challenged Skyshatter!',0,1,0,1,'Captain Skyshatter - SAY_START_SKYSHATTER'),
+(-1001310,'I weep for you, $n. You really have no idea what you''ve gotten yourself into... - say before start big flight?',0,0,0,1,'Captain Skyshatter - SAY_MID_SKYSHATTER'),
+(-1001311,'I... I am undone... The new top orc is $n!',0,1,0,1,'Captain Skyshatter - SAY_END_SKYSHATTER');
 
 -- -1 010 000 Classic texts
 
@@ -3441,31 +3469,31 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1534024,'All creation will be devoured!',11044,1,0,0,'archimonde SAY_SLAY1'),
 (-1534025,'Your soul will languish for eternity.',10991,1,0,0,'archimonde SAY_SLAY2'),
 (-1534026,'I am the coming of the end!',11045,1,0,0,'archimonde SAY_SLAY3'),
-(-1534027,'At last it is here. Mourn and lament the passing of all you have ever known and all that would have been! Akmin-kurai!',10993,1,0,0,'archimonde SAY_ENRAGE'),
+(-1534027,'At last it is here! Mourn and lament the passing of all you have ever known, and all that would have been! Hach min corai!',10993,1,0,0,'archimonde SAY_ENRAGE'),
 (-1534028,'No, it cannot be! Nooo!',10992,1,0,0,'archimonde SAY_DEATH'),
 (-1534029,'You are mine now.',10988,1,0,0,'archimonde SAY_SOUL_CHARGE1'),
 (-1534030,'Bow to my will.',11042,1,0,0,'archimonde SAY_SOUL_CHARGE2');
 
 -- -1 540 000 SHATTERED HALLS
 INSERT INTO script_texts (entry,content_default,sound,type,language,emote,comment) VALUES
-(-1540000,'You wish to fight us all at once? This should be amusing!',10262,1,0,0,'nethekurse SAY_INTRO'),
-(-1540001,'You can have that one. I no longer need him.',10263,1,0,0,'nethekurse PEON_ATTACK_1'),
-(-1540002,'Yes, beat him mercilessly. His skull is a thick as an ogres.',10264,1,0,0,'nethekurse PEON_ATTACK_2'),
-(-1540003,'Don\'t waste your time on that one. He\'s weak!',10265,1,0,0,'nethekurse PEON_ATTACK_3'),
-(-1540004,'You want him? Very well, take him!',10266,1,0,0,'nethekurse PEON_ATTACK_4'),
-(-1540005,'One pitiful wretch down. Go on, take another one.',10267,1,0,0,'nethekurse PEON_DIE_1'),
-(-1540006,'Ahh, what a waste... Next!',10268,1,0,0,'nethekurse PEON_DIE_2'),
-(-1540007,'I was going to kill him anyway!',10269,1,0,0,'nethekurse PEON_DIE_3'),
-(-1540008,'Thank you for saving me the trouble! Now it\'s my turn to have some fun...',10270,1,0,0,'nethekurse PEON_DIE_4'),
-(-1540009,'Beg for your pittyfull life!',10259,1,0,0,'nethekurse SAY_TAUNT_1'),
-(-1540010,'Run covad, ruun!',10260,1,0,0,'nethekurse SAY_TAUNT_2'),
-(-1540011,'Your pain amuses me.',10261,1,0,0,'nethekurse SAY_TAUNT_3'),
-(-1540012,'I\'m already bored.',10271,1,0,0,'nethekurse SAY_AGGRO_1'),
-(-1540013,'Come on! ... Show me a real fight.',10272,1,0,0,'nethekurse SAY_AGGRO_2'),
-(-1540014,'I had more fun torturing the peons.',10273,1,0,0,'nethekurse SAY_AGGRO_3'),
-(-1540015,'You Loose.',10274,1,0,0,'nethekurse SAY_SLAY_1'),
-(-1540016,'Ohh! Just die.',10275,1,0,0,'nethekurse SAY_SLAY_2'),
-(-1540017,'What a ... a shame.',10276,1,0,0,'nethekurse SAY_DIE'),
+(-1540000,'You wish to fight us all at once? This should be amusing!',10262,1,0,0,'nethekurse SAY_AGGRO_1'),
+(-1540001,'Thank you for saving me the trouble. Now it''s my turn to have some fun!',10270,1,0,0,'nethekurse SAY_AGGRO_2'),
+(-1540002,'Come on, show me a real fight!',10272,1,0,0,'nethekurse SAY_AGGRO_3'),
+(-1540003,'You can have that one, I no longer need him!',10263,1,0,11,'nethekurse PEON_ATTACK_1'),
+(-1540004,'Yes, beat him mercilessly! His skull is as thick as an ogre''s!',10264,1,0,0,'nethekurse PEON_ATTACK_2'),
+(-1540005,'Don''t waste your time on that one, he''s weak!',10265,1,0,11,'nethekurse PEON_ATTACK_3'),
+(-1540006,'You want him? Very well, take him!',10266,1,0,0,'nethekurse PEON_ATTACK_4'),
+(-1540007,'One pitiful wretch down. Go on, take another one.',10267,1,0,0,'nethekurse PEON_DIE_1'),
+(-1540008,'Ah, what a waste... next!',10268,1,0,0,'nethekurse PEON_DIE_2'),
+(-1540009,'I was going to kill him anyway!',10269,1,0,0,'nethekurse PEON_DIE_3'),
+(-1540010,'Beg for your pitiful life!',10259,1,0,0,'nethekurse SAY_TAUNT_1'),
+(-1540011,'Run, coward, run!   ',10260,1,0,11,'nethekurse SAY_TAUNT_2'),
+(-1540012,'Your pain amuses me!',10261,1,0,11,'nethekurse SAY_TAUNT_3'),
+(-1540013,'I had more fun torturing the peons!',10273,1,0,0,'nethekurse SAY_SLAY_1'),
+(-1540014,'I''m already bored!',10271,1,0,0,'nethekurse SAY_SAY_2'),
+(-1540015,'You lose.',10274,1,0,0,'nethekurse SAY_SLAY_3'),
+(-1540016,'Oh, just die!',10275,1,0,0,'nethekurse SAY_SLAY_4'),
+(-1540017,'What... a shame.',10276,1,0,0,'nethekurse SAY_DIE'),
 
 (-1540018,'Smash!',10306,1,0,0,'omrogg GoCombat_1'),
 (-1540019,'If you nice me let you live.',10308,1,0,0,'omrogg GoCombat_2'),
@@ -3640,7 +3668,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1548019,'At last I am liberated. It has been too long since I have tasted true freedom!',11309,1,0,0,'leotheras SAY_FREE'),
 (-1548020,'You cannot kill me! Fools, I\'ll be back! I\'ll... aarghh...',11317,1,0,0,'leotheras SAY_DEATH'),
 
-(-1548021,'Guards, attention! We have visitors...',11277,1,0,0,'karathress SAY_AGGRO'),
+(-1548021,'Guards, attention! We have visitors....',11277,1,0,0,'karathress SAY_AGGRO'),
 (-1548022,'Your overconfidence will be your undoing! Guards, lend me your strength!',11278,1,0,0,'karathress SAY_GAIN_BLESSING'),
 (-1548023,'Go on, kill them! I\'ll be the better for it!',11279,1,0,0,'karathress SAY_GAIN_ABILITY1'),
 (-1548024,'I am more powerful than ever!',11280,1,0,0,'karathress SAY_GAIN_ABILITY2'),
@@ -3660,22 +3688,22 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1548037,'Only the strong survive.',11328,1,0,0,'morogrim SAY_SLAY3'),
 (-1548038,'Great... currents of... Ageon.',11329,1,0,0,'morogrim SAY_DEATH'),
 (-1548039,'%s sends his enemies to their watery graves!',0,3,0,0,'morogrim EMOTE_WATERY_GRAVE'),
-(-1548040,'The violent earthquake has alerted nearby murlocs!',0,3,0,0,'morogrim EMOTE_EARTHQUAKE'),
-(-1548041,'%s summons Watery Globules!',0,3,0,0,'morogrim EMOTE_WATERY_GLOBULES'),
+(-1548040,'The violent earthquake has alerted nearby Murlocs!',0,3,0,0,'morogrim EMOTE_EARTHQUAKE'),
+(-1548041,'%s summons watery globules!',0,3,0,0,'morogrim EMOTE_WATERY_GLOBULES'),
 
 (-1548042,'Water is life. It has become a rare commodity here in Outland. A commodity that we alone shall control. We are the Highborne, and the time has come at last for us to retake our rightful place in the world!',11531,1,0,0,'vashj SAY_INTRO'),
 (-1548043,'I\'ll split you from stem to stern!',11532,1,0,0,'vashj SAY_AGGRO1'),
 (-1548044,'Victory to Lord Illidan!',11533,1,0,0,'vashj SAY_AGGRO2'),
 (-1548045,'I spit on you, surface filth!',11534,1,0,0,'vashj SAY_AGGRO3'),
 (-1548046,'Death to the outsiders!',11535,1,0,0,'vashj SAY_AGGRO4'),
-(-1548047,'I did not wish to lower myself by engaging your kind, but you leave me little choice!',11538,1,0,0,'vashj SAY_PHASE1'),
+(-1548047,'I did not wish to lower myself by engaging your kind, but you leave me little choice...',11538,1,0,0,'vashj SAY_AGGRO5'),
 (-1548048,'The time is now! Leave none standing!',11539,1,0,0,'vashj SAY_PHASE2'),
 (-1548049,'You may want to take cover.',11540,1,0,0,'vashj SAY_PHASE3'),
 (-1548050,'Straight to the heart!',11536,1,0,0,'vashj SAY_BOWSHOT1'),
 (-1548051,'Seek your mark!',11537,1,0,0,'vashj SAY_BOWSHOT2'),
 (-1548052,'Your time ends now!',11541,1,0,0,'vashj SAY_SLAY1'),
 (-1548053,'You have failed!',11542,1,0,0,'vashj SAY_SLAY2'),
-(-1548054,'Be\'lamere an\'delay',11543,1,0,0,'vashj SAY_SLAY3'),
+(-1548054,'Be\'lemer an-delei!',11543,1,0,0,'vashj SAY_SLAY3'),
 (-1548055,'Lord Illidan, I... I am... sorry.',11544,1,0,0,'vashj SAY_DEATH'),
 
 (-1548056,'%s takes a deep breath!',0,3,0,0,'lurker below EMOTE_DEEP_BREATH');
@@ -4595,7 +4623,7 @@ INSERT INTO gossip_texts (entry,content_default,comment) VALUES
 (-3532002,'Ok, I\'ll give it a try, then.','barnes GOSSIP_ITEM_OPERA_2'),
 (-3532003,'I\'ve never been more ready.','barnes GOSSIP_ITEM_OPERA_JULIANNE_WIPE'),
 (-3532004,'The wolf\'s going down.','barnes GOSSIP_ITEM_OPERA_WOLF_WIPE'),
-(-3532005,'What phat lewtz you have grandmother?','grandma GOSSIP_ITEM_GRANDMA'),
+(-3532005,'Oh, grandmother, what phat lewts you have.','grandma GOSSIP_ITEM_GRANDMA_THIRD'),
 
 (-3532006,'Control Orc Grunt','orc grunt GOSSIP_ITEM_ORC_GRUNT'),
 (-3532007,'Control Orc Wolf','orc wolf GOSSIP_ITEM_ORC_WOLF'),
@@ -4610,7 +4638,9 @@ INSERT INTO gossip_texts (entry,content_default,comment) VALUES
 (-3532016,'Control Human Cleric','human cleric GOSSIP_ITEM_HUMAN_CLERIC'),
 (-3532017,'Control King Llane','king llane GOSSIP_ITEM_KING_LLANE'),
 (-3532018,'Please reset the chess board, we would like to play again.','medivh GOSSIP_ITEM_RESET_BOARD'),
-(-3532019,'I''ll nail it!','barnes GOSSIP_ITEM_OPERA_OZ_WIPE');
+(-3532019,'I''ll nail it!','barnes GOSSIP_ITEM_OPERA_OZ_WIPE'),
+(-3532020,'Oh, grandmother, what big ears you have.','grandma GOSSIP_ITEM_GRANDMA_FIRST'),
+(-3532021,'Oh, grandmother, what big eyes you have.','grandma GOSSIP_ITEM_GRANDMA_SECOND');
 
 -- -3 534 000 THE BATTLE OF MT. HYJAL
 INSERT INTO gossip_texts (entry,content_default,comment) VALUES
@@ -7658,7 +7688,7 @@ INSERT INTO script_waypoint VALUES
 (23342,0,56,-5100.548,640.0574,86.37918,0,0,0,''),
 (23342,0,57,-5082.932,631.0391,86.1046,0,0,0,''),
 (23342,0,58,-5081.618,640.9318,86.58853,0,0,0,''),
-(23342,0,59,-5081.618,640.9318,86.58853,1.5708,0,0,''),
+(23342,0,59,-5081.618,640.9318,86.58853,1.570796,0,0,''),
 (23344,0,0,-5084.937,633.847,86.23929,0,0,0,''),
 (23344,0,1,-5098.979,634.7803,86.10049,0,0,0,''),
 (23344,0,2,-5101.355,648.9661,86.75992,0,0,0,''),
@@ -7859,7 +7889,7 @@ INSERT INTO script_waypoint VALUES
 (23345,0,107,-5097.221,643.8181,86.61429,0,0,0,''),
 (23345,0,108,-5082.632,631.6423,86.1046,0,0,0,''),
 (23345,0,109,-5065.899,639.8352,86.49668,0,0,0,''),
-(23345,0,110,-5066.307,640.2136,86.49668,1.55334,0,0,''),
+(23345,0,110,-5066.307,640.2136,86.49668,1.553343,0,0,''),
 (23346,0,0,-5078.127,632.7935,86.1046,0,0,0,''),
 (23346,0,1,-5096.167,634.1729,86.26175,0,0,0,''),
 (23346,0,2,-5099.563,647.3327,86.73929,0,0,0,''),
@@ -8031,7 +8061,7 @@ INSERT INTO script_waypoint VALUES
 (23346,0,168,-5091.961,630.3558,86.1317,0,0,0,''),
 (23346,0,169,-5078.229,633.2795,86.1046,0,0,0,''),
 (23346,0,170,-5062.336,632.8517,86.17667,0,0,0,''),
-(23346,0,171,-5060.474,640.3013,86.64524,1.50098,0,0,''),
+(23346,0,171,-5060.474,640.3013,86.64524,1.500983,0,0,''),
 (23348,0,0,-5097.342,638.2053,86.37064,0,0,0,''),
 (23348,0,1,-5099.037,662.449,87.04227,0,0,0,''),
 (23348,0,2,-5079.384,664.2811,89.15067,0,0,0,'fly on'),
