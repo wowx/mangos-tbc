@@ -1627,19 +1627,22 @@ void Aura::TriggerSpell()
                 }
                 break;
             }
-//            case SPELLFAMILY_WARRIOR:
-//            {
-//                switch(auraId)
-//                {
-//                    // Wild Magic
-//                    case 23410: break;
+            case SPELLFAMILY_WARRIOR:
+            {
+                switch(auraId)
+                {
+                    case 23410:                             // Wild Magic (Mage class call in Nefarian encounter)
+                    {
+                        trigger_spell_id = 23603;
+                        break;
+                    }
 //                    // Corrupted Totems
 //                    case 23425: break;
-//                    default:
-//                        break;
-//                }
-//                break;
-//            }
+                    default:
+                        break;
+                }
+                break;
+            }
 //            case SPELLFAMILY_PRIEST:
 //            {
 //                switch(auraId)
@@ -2174,6 +2177,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 switch (GetId())
                 {
+                    case 23427:                             // Summon Infernals (Warlock class call in Nefarian encounter)
+                    {
+                        if (Unit* target = GetTarget())
+                            target->CastSpell(target, 23426, TRIGGERED_OLD_TRIGGERED);
+                        return;
+                    }
                     case 41099:                             // Battle Stance
                     {
                         if (target->GetTypeId() != TYPEID_UNIT)
