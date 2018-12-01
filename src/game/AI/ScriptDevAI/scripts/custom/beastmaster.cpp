@@ -99,7 +99,6 @@ void CreatePet(Player* player, Creature* creature, uint32 entry)
     pet->LearnPetPassives();
     pet->CastPetAuras(true);
     pet->CastOwnerTalentAuras();
-    pet->InitTamedPetPassives(player);
     pet->UpdateAllStats();
 
     pet->SetRequiredXpForNextLoyaltyLevel();
