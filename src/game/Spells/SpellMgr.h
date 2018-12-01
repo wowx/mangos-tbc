@@ -387,12 +387,18 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
 
     switch (spellInfo->Id)
     {
-        case 22856:         // Ice Lock (Guard Slip'kik ice trap in Dire Maul)
+        case 9460:          // Corrosive Ooze
+        case 17327:         // Spirit Particles
         case 22735:         // Spirit of Runn Tum
+        case 22856:         // Ice Lock (Guard Slip'kik ice trap in Dire Maul)
+        case 28126:         // Spirit Particles (purple)
+        case 29406:         // Shadowform
         case 31332:         // Dire Wolf Visual
         case 31690:         // Putrid Mushroom
         case 32007:         // Mo'arg Engineer Transform Visual
         case 35596:         // Power of the Legion
+        case 35841:         // Draenei Spirit Visual
+        case 35850:         // Draenei Spirit Visual 2
         case 39311:         // Scrapped Fel Reaver transform aura that is never removed even on evade
         case 39918:         // visual auras in Soulgrinder script
         case 39920:
@@ -787,6 +793,10 @@ inline bool IsPositiveEffectTargetMode(const SpellEntry* entry, SpellEffectIndex
     if (!entry)
         return false;
 
+    // Forces positive targets to be negative TODO: Find out if this is true for neutral targets
+    if (entry->HasAttribute(SPELL_ATTR_NEGATIVE))
+        return false;
+
     // Triggered spells case: prefer child spell via IsPositiveSpell()-like scan for triggered spell
     if (IsSpellEffectTriggerSpell(entry, effIndex))
     {
@@ -851,6 +861,8 @@ inline bool IsPositiveEffect(const SpellEntry* spellproto, SpellEffectIndex effI
         case 39495: // Remove Tainted Cores
         case 39497: // Remove Enchanted Weapons - both should hit all players in zone with the given items, uses a neutral target type
         case 34700: // Allergic Reaction - Neutral target type - needs to be a debuff
+        case 36717: // Neutral spells with SPELL_ATTR_EX3_TARGET_ONLY_PLAYER as a filter
+        case 38829:
             return false;
     }
 
@@ -1048,17 +1060,6 @@ inline bool IsPositiveSpell(uint32 spellId, const WorldObject* caster = nullptr,
     if (!spellId)
         return false;
     return IsPositiveSpell(sSpellTemplate.LookupEntry<SpellEntry>(spellId), caster, target);
-}
-
-inline bool IsSpellDoNotReportFailure(SpellEntry const* spellInfo)
-{
-    switch (spellInfo->Id)
-    {
-        case 32172:     // Thrallmars/Honor holds favor trigger spell
-            return true;
-        default:
-            return false;
-    }
 }
 
 inline void GetChainJumpRange(SpellEntry const* spellInfo, SpellEffectIndex effIdx, float& minSearchRangeCaster, float& maxSearchRangeTarget, float& jumpRadius)
@@ -1286,7 +1287,7 @@ inline bool IsIgnoreLosSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex
         default: break;
     }
 
-    return spellInfo->EffectRadiusIndex[effIdx] == 13 || IsIgnoreLosSpell(spellInfo);
+    return spellInfo->EffectRadiusIndex[effIdx] == 28 || IsIgnoreLosSpell(spellInfo);
 }
 
 inline bool IsIgnoreLosSpellCast(SpellEntry const* spellInfo)
@@ -1393,11 +1394,17 @@ inline bool IsPartyOrRaidTarget(uint32 target)
     }
 }
 
-inline bool IsGroupBuff(SpellEntry const* spellInfo)
+inline bool IsGroupRestrictedBuff(SpellEntry const* spellInfo)
 {
-    for (unsigned int i : spellInfo->EffectImplicitTargetA)
+    switch (spellInfo->Id)
     {
-        if (IsPartyOrRaidTarget(i))
+        // Soulstone Ressurection - Patch 2.1.0
+        case 20707:
+        case 20762:
+        case 20763:
+        case 20764:
+        case 20765:
+        case 27239:
             return true;
     }
 
@@ -1861,7 +1868,9 @@ enum ProcFlags
     PROC_FLAG_ON_TRAP_ACTIVATION            = 0x00200000,   // 21 On trap activation
 
     PROC_FLAG_TAKEN_OFFHAND_HIT             = 0x00400000,   // 22 Taken off-hand melee attacks(not used)
-    PROC_FLAG_SUCCESSFUL_OFFHAND_HIT        = 0x00800000    // 23 Successful off-hand melee attacks
+    PROC_FLAG_SUCCESSFUL_OFFHAND_HIT        = 0x00800000,   // 23 Successful off-hand melee attacks
+
+    PROC_FLAG_DEATH                         = 0x01000000,   // 24 On death by any means
 };
 
 #define MELEE_BASED_TRIGGER_MASK (PROC_FLAG_SUCCESSFUL_MELEE_HIT        | \
@@ -1978,6 +1987,12 @@ struct SpellTargetPosition
     float  target_Y;
     float  target_Z;
     float  target_Orientation;
+};
+
+struct SpellCone
+{
+    uint32 spellId;
+    int32 coneAngle;
 };
 
 typedef std::unordered_map<uint32, SpellTargetPosition> SpellTargetPositionMap;

@@ -57,13 +57,10 @@ struct boss_maiden_of_virtueAI : public ScriptedAI
 
     void Reset() override
     {
-        m_uiRepentanceTimer    = urand(25000, 40000);
+        m_uiRepentanceTimer    = urand(42000, 44000);
         m_uiHolyfireTimer      = urand(8000, 25000);
         m_uiHolywrathTimer     = urand(15000, 25000);
         m_uiHolygroundTimer    = 3000;
-
-        m_creature->ApplySpellImmune(nullptr, IMMUNITY_STATE, SPELL_AURA_MOD_TAUNT, true);
-        m_creature->ApplySpellImmune(nullptr, IMMUNITY_EFFECT, SPELL_EFFECT_ATTACK_ME, true);
     }
 
     void KilledUnit(Unit* /*pVictim*/) override
@@ -116,7 +113,7 @@ struct boss_maiden_of_virtueAI : public ScriptedAI
             if (DoCastSpellIfCan(m_creature, SPELL_REPENTANCE) == CAST_OK)
             {
                 DoScriptText(urand(0, 1) ? SAY_REPENTANCE1 : SAY_REPENTANCE2, m_creature);
-                m_uiRepentanceTimer = urand(25000, 35000);
+                m_uiRepentanceTimer = urand(28000, 36000);
             }
         }
         else

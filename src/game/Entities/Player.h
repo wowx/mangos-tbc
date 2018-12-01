@@ -957,7 +957,7 @@ class Player : public Unit
         }
 
 
-        void GiveXP(uint32 xp, Creature* victim);
+        void GiveXP(uint32 xp, Creature* victim, float groupRate = 1.f);
         void GiveLevel(uint32 level);
 
         void InitStatsForLevel(bool reapplyMods = false);
@@ -1653,7 +1653,7 @@ class Player : public Unit
 
         void BuildCreateUpdateBlockForPlayer(UpdateData* data, Player* target) const override;
         void DestroyForPlayer(Player* target) const override;
-        void SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP) const;
+        void SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP, float groupRate) const;
 
         uint8 LastSwingErrorMsg() const { return m_swingErrorMsg; }
         void SwingErrorMsg(uint8 val) { m_swingErrorMsg = val; }
@@ -2115,8 +2115,6 @@ class Player : public Unit
         uint8 GetSubGroup() const { return m_group.getSubGroup(); }
         uint32 GetGroupUpdateFlag() const { return m_groupUpdateMask; }
         void SetGroupUpdateFlag(uint32 flag) { m_groupUpdateMask |= flag; }
-        const uint64& GetAuraUpdateMask() const { return m_auraUpdateMask; }
-        void SetAuraUpdateMask(uint8 slot) { m_auraUpdateMask |= (uint64(1) << slot); }
         Player* GetNextRaidMemberWithLowestLifePercentage(float radius, AuraType noAuraType);
         PartyResult CanUninviteFromGroup() const;
         void UpdateGroupLeaderFlag(const bool remove = false);
@@ -2136,6 +2134,7 @@ class Player : public Unit
         bool HasTitle(CharTitlesEntry const* title) const { return HasTitle(title->bit_index); }
         void SetTitle(uint32 titleId, bool lost = false);
         void SetTitle(CharTitlesEntry const* title, bool lost = false);
+        void SaveTitles(); // optimization for arena rewards
 
 #ifdef BUILD_PLAYERBOT
         // A Player can either have a playerbotMgr (to manage its bots), or have playerbotAI (if it is a bot), or
@@ -2378,7 +2377,6 @@ class Player : public Unit
         GroupReference m_originalGroup;
         Group* m_groupInvite;
         uint32 m_groupUpdateMask;
-        uint64 m_auraUpdateMask;
 
         // Player summoning
         time_t m_summon_expire;

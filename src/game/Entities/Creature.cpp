@@ -133,7 +133,7 @@ bool CreatureCreatePos::Relocate(Creature* cr) const
 Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_lootMoney(0), m_lootGroupRecipientId(0),
     m_lootStatus(CREATURE_LOOT_STATUS_NONE),
-    m_corpseDecayTimer(0), m_respawnTime(0), m_respawnDelay(25), m_corpseDelay(60), m_canAggro(false),
+    m_respawnTime(0), m_respawnDelay(25), m_corpseDelay(60), m_canAggro(false),
     m_respawnradius(5.0f), m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE),
     m_equipmentId(0), m_AlreadyCallAssistance(false),
     m_AlreadySearchedAssistance(false), m_isDeadByDefault(false),
@@ -204,7 +204,7 @@ void Creature::RemoveCorpse(bool inPlace)
 
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Removing corpse of %s ", GetGuidStr().c_str());
 
-    m_corpseDecayTimer = 0;
+    m_corpseExpirationTime = TimePoint();
     SetDeathState(DEAD);
     UpdateObjectVisibility();
 
@@ -410,9 +410,16 @@ bool Creature::UpdateEntry(uint32 Entry, Team team, const CreatureData* data /*=
         if (data)
         {
             uint32 curhealth = data->curhealth ? data->curhealth : GetMaxHealth();
-            uint32 curmana = data->curmana ? data->curmana : GetMaxPower(POWER_MANA);
             SetHealth(m_deathState == ALIVE ? curhealth : 0);
-            SetPower(POWER_MANA, curmana);
+            if (GetPowerType() == POWER_MANA)
+            {
+                uint32 curmana;
+                if (IsRegeneratingPower()) // bypass so that 0 mana is possible TODO: change this to -1 in DB
+                    curmana = data->curmana ? data->curmana : GetMaxPower(POWER_MANA);
+                else
+                    curmana = data->curmana;
+                SetPower(POWER_MANA, curmana);
+            }
         }
     }
 
@@ -469,8 +476,6 @@ bool Creature::UpdateEntry(uint32 Entry, Team team, const CreatureData* data /*=
             const bool sanctuary = (zone && (zone->flags & AREA_FLAG_SANCTUARY));
             SetPvP(!sanctuary);
         }
-        else
-            SetPvP(false);
     }
 
     // Try difficulty dependent version before falling back to base entry
@@ -611,12 +616,8 @@ void Creature::Update(const uint32 diff)
                 loot->Update();
 
             if (!m_isDeadByDefault)
-            {
-                if (m_corpseDecayTimer <= diff)
+                if (IsCorpseExpired())
                     RemoveCorpse();
-                else
-                    m_corpseDecayTimer -= diff;
-            }
 
             break;
         }
@@ -624,13 +625,11 @@ void Creature::Update(const uint32 diff)
         {
             if (m_isDeadByDefault)
             {
-                if (m_corpseDecayTimer <= diff)
+                if (IsCorpseExpired())
                 {
                     RemoveCorpse();
                     break;
                 }
-                else
-                    m_corpseDecayTimer -= diff;
             }
 
             Unit::Update(diff);
@@ -658,7 +657,7 @@ void Creature::RegenerateAll(uint32 update_diff)
     if (m_regenTimer != 0)
         return;
 
-    if (!isInCombat() || IsPolymorphed() || IsEvadeRegen())
+    if (!isInCombat() || IsEvadeRegen())
         RegenerateHealth();
 
     RegeneratePower();
@@ -908,7 +907,7 @@ bool Creature::IsTrainerOf(Player* pPlayer, bool msg) const
             if (GetCreatureInfo()->TrainerRace && pPlayer->getRace() != GetCreatureInfo()->TrainerRace)
             {
                 // Allowed to train if exalted
-                if (FactionTemplateEntry const* faction_template = getFactionTemplateEntry())
+                if (FactionTemplateEntry const* faction_template = GetFactionTemplateEntry())
                 {
                     if (pPlayer->GetReputationRank(faction_template->faction) == REP_EXALTED)
                         return true;
@@ -1639,7 +1638,7 @@ void Creature::SetDeathState(DeathState s)
         if (CreatureData const* data = sObjectMgr.GetCreatureData(GetGUIDLow()))
             m_respawnDelay = data->GetRandomRespawnTime();
 
-        m_corpseDecayTimer = m_corpseDelay * IN_MILLISECONDS; // the max/default time for corpse decay (before creature is looted/AllLootRemovedFromCorpse() is called)
+        m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(m_corpseDelay * IN_MILLISECONDS); // the max/default time for corpse decay (before creature is looted/AllLootRemovedFromCorpse() is called)
         m_respawnTime = time(nullptr) + m_respawnDelay; // respawn delay (spawntimesecs)
 
         // always save boss respawn time at death to prevent crash cheating
@@ -1713,7 +1712,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
     {
         ForcedDespawnDelayEvent* pEvent = new ForcedDespawnDelayEvent(*this, onlyAlive);
 
-        m_Events.AddEvent(pEvent, m_Events.CalculateTime(timeMSToDespawn));
+        m_events.AddEvent(pEvent, m_events.CalculateTime(timeMSToDespawn));
         return;
     }
 
@@ -1728,7 +1727,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, bool onlyAlive)
     SetHealth(0);                                           // just for nice GM-mode view
 }
 
-bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf)
+bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf, uint8 effectMask)
 {
     if (!spellInfo)
         return false;
@@ -1742,7 +1741,7 @@ bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf)
             return true;
     }
 
-    return Unit::IsImmuneToSpell(spellInfo, castOnSelf);
+    return Unit::IsImmuneToSpell(spellInfo, castOnSelf, effectMask);
 }
 
 bool Creature::IsImmuneToDamage(SpellSchoolMask meleeSchoolMask)
@@ -1758,33 +1757,36 @@ bool Creature::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectInd
     if (!castOnSelf && GetCreatureInfo()->MechanicImmuneMask & (1 << (spellInfo->EffectMechanic[index] - 1)))
         return true;
 
-    switch (spellInfo->Effect[index])
+    if (!spellInfo->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)) // spells like 37017 bypass these invulnerabilities
     {
-        case SPELL_EFFECT_APPLY_AURA:
+        switch (spellInfo->Effect[index])
         {
-            switch (spellInfo->EffectApplyAuraName[index])
+            case SPELL_EFFECT_APPLY_AURA:
             {
-                case SPELL_AURA_MOD_TAUNT: // Taunt immunity special flag check
-                    if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NOT_TAUNTABLE)
-                        return true;
-                    break;
-                case SPELL_AURA_HASTE_SPELLS: // Haste spell aura immunity
-                    if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_HASTE_SPELL_IMMUNITY)
-                        return true;
-                    break;
-                case SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE:
-                    if (IsWorldBoss()) // All bosses are immune to vindication in 2.4.3, needs to be setting in future
-                        return true;
-                    break;
-                default: break;
+                switch (spellInfo->EffectApplyAuraName[index])
+                {
+                    case SPELL_AURA_MOD_TAUNT: // Taunt immunity special flag check
+                        if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NOT_TAUNTABLE)
+                            return true;
+                        break;
+                    case SPELL_AURA_HASTE_SPELLS: // Haste spell aura immunity
+                        if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_HASTE_SPELL_IMMUNITY)
+                            return true;
+                        break;
+                    case SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE:
+                        if (IsWorldBoss()) // All bosses are immune to vindication in 2.4.3, needs to be setting in future
+                            return true;
+                        break;
+                    default: break;
+                }
+                break;
             }
-            break;
+            case SPELL_EFFECT_ATTACK_ME: // Taunt immunity special flag check
+                if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NOT_TAUNTABLE)
+                    return true;
+                break;
+            default: break;
         }
-        case SPELL_EFFECT_ATTACK_ME: // Taunt immunity special flag check
-            if (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NOT_TAUNTABLE)
-                return true;
-            break;
-        default: break;
     }
 
     return Unit::IsImmuneToSpellEffect(spellInfo, index, castOnSelf);
@@ -1903,7 +1905,7 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
     // Live player (or with not release body see live creatures or death creatures with corpse disappearing time > 0
     if (pl->isAlive() || !pl->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
     {
-        return (isAlive() || m_corpseDecayTimer > 0 || (m_isDeadByDefault && m_deathState == CORPSE));
+        return (isAlive() || !IsCorpseExpired() || (m_isDeadByDefault && m_deathState == CORPSE));
     }
 
     // Dead player see live creatures near own corpse
@@ -2012,8 +2014,8 @@ void Creature::SaveRespawnTime()
 
     if (m_respawnTime > time(nullptr))                         // dead (no corpse)
         GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), m_respawnTime);
-    else if (m_corpseDecayTimer > 0)                        // dead (corpse)
-        GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), time(nullptr) + m_respawnDelay + m_corpseDecayTimer / IN_MILLISECONDS);
+    else if (!IsCorpseExpired())                               // dead (corpse)
+        GetMap()->GetPersistentState()->SaveCreatureRespawnTime(GetGUIDLow(), std::chrono::system_clock::to_time_t(m_corpseExpirationTime));
 }
 
 CreatureDataAddon const* Creature::GetCreatureAddon() const
@@ -2172,12 +2174,15 @@ bool Creature::MeetsSelectAttackingRequirement(Unit* pTarget, SpellEntry const* 
 
         if ((selectFlags & SELECT_FLAG_RANGE_AOE_RANGE))
         {
-            float dist = pTarget->GetDistance(GetPositionX(), GetPositionY(), GetPositionZ());
+            float dist = pTarget->GetDistance(GetPositionX(), GetPositionY(), GetPositionZ(), DIST_CALC_COMBAT_REACH);
             if (dist > params.range.maxRange || dist < params.range.minRange)
                 return false;
         }
 
         if ((selectFlags & SELECT_FLAG_POWER_NOT_MANA) && pTarget->GetPowerType() == POWER_MANA)
+            return false;
+
+        if ((selectFlags & SELECT_FLAG_SKIP_TANK) && pTarget == getVictim())
             return false;
     }
 
@@ -2210,7 +2215,7 @@ bool Creature::MeetsSelectAttackingRequirement(Unit* pTarget, SpellEntry const* 
         {
             SpellRadiusEntry const* srange = sSpellRadiusStore.LookupEntry(pSpellInfo->EffectRadiusIndex[0]);
             float max_range = GetSpellRadius(srange);
-            float dist = pTarget->GetDistance(GetPositionX(), GetPositionY(), GetPositionZ());
+            float dist = pTarget->GetDistance(GetPositionX(), GetPositionY(), GetPositionZ(), DIST_CALC_COMBAT_REACH);
             return dist < max_range;
         }
         else
@@ -2400,11 +2405,11 @@ time_t Creature::GetRespawnTimeEx() const
     time_t now = time(nullptr);
     if (m_respawnTime > now)                                // dead (no corpse)
         return m_respawnTime;
-    if (m_corpseDecayTimer > 0)                        // dead (corpse)
-        return now + m_respawnDelay + m_corpseDecayTimer / IN_MILLISECONDS;
-    return now;
+    else if (!IsCorpseExpired())                        // dead (corpse)
+        return std::chrono::system_clock::to_time_t(m_corpseExpirationTime);
+    else
+        return now;
 }
-
 void Creature::GetRespawnCoord(float& x, float& y, float& z, float* ori, float* dist) const
 {
     x = m_respawnPos.x;
@@ -2593,9 +2598,9 @@ void Creature::ClearTemporaryFaction()
     if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_NON_ATTACKABLE && GetCreatureInfo()->UnitFlags & UNIT_FLAG_NON_ATTACKABLE)
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
     if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_IMMUNE_TO_PLAYER && GetCreatureInfo()->UnitFlags & UNIT_FLAG_IMMUNE_TO_PLAYER)
-        SetImmuneToPlayer(true);
+        SetImmuneToPlayer(false);
     if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_IMMUNE_TO_NPC && GetCreatureInfo()->UnitFlags & UNIT_FLAG_IMMUNE_TO_NPC)
-        SetImmuneToNPC(true);
+        SetImmuneToNPC(false);
     if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_PACIFIED && GetCreatureInfo()->UnitFlags & UNIT_FLAG_PACIFIED)
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
     if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_NOT_SELECTABLE && GetCreatureInfo()->UnitFlags & UNIT_FLAG_NOT_SELECTABLE)
@@ -2845,8 +2850,8 @@ void Creature::InspectingLoot()
     // this will not have effect after re spawn delay (corpse will be removed anyway)
 
     // check if player have enough time to inspect loot
-    if (m_corpseDecayTimer < MINIMUM_LOOTING_TIME)
-        m_corpseDecayTimer = MINIMUM_LOOTING_TIME;
+    if (m_corpseExpirationTime < GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(MINIMUM_LOOTING_TIME))
+        m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(MINIMUM_LOOTING_TIME);
 }
 
 // reduce decay timer for corpse if need (for a corpse without loot)
@@ -2862,8 +2867,8 @@ void Creature::ReduceCorpseDecayTimer()
             isDungeonEncounter = true;
     }
 
-    if (!isDungeonEncounter && m_corpseDecayTimer > 2 * MINUTE * IN_MILLISECONDS)
-        m_corpseDecayTimer = 2 * MINUTE * IN_MILLISECONDS;  // 2 minutes for a creature
+    if (!isDungeonEncounter && m_corpseExpirationTime > GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(2 * MINUTE * IN_MILLISECONDS))
+        m_corpseExpirationTime = GetMap()->GetCurrentClockTime() + std::chrono::milliseconds(2 * MINUTE * IN_MILLISECONDS);  // 2 minutes for a creature
 }
 
 // Set loot status. Also handle remove corpse timer
@@ -2886,7 +2891,7 @@ void Creature::SetLootStatus(CreatureLootStatus status)
             }
             break;
         case CREATURE_LOOT_STATUS_SKINNED:
-            m_corpseDecayTimer = 0; // remove corpse at next update
+            m_corpseExpirationTime = TimePoint(); // remove corpse at next update
             RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
             RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
             break;
@@ -2953,6 +2958,14 @@ void Creature::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
         return;
 
     WorldObject::LockOutSpells(schoolMask, duration);
+}
+
+bool Creature::IsCorpseExpired() const
+{
+    auto now = GetMap()->GetCurrentClockTime();
+    if (now >= m_corpseExpirationTime)
+        return true;
+    return false;
 }
 
 void Creature::UnsummonCleanup()

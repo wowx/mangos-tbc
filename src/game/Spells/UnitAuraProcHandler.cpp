@@ -677,26 +677,33 @@ SpellAuraProcResult Unit::HandleHasteAuraProc(ProcExecutionData& data)
     Unit* target = pVictim;
     int32 basepoints0 = 0;
 
-    switch (hasteSpell->SpellFamilyName)
+    switch (hasteSpell->Id)
     {
-        case SPELLFAMILY_ROGUE:
+        // Blade Flurry
+        case 13877:
+        case 33735:
         {
-            switch (hasteSpell->Id)
-            {
-                // Blade Flurry
-                case 13877:
-                case 33735:
-                {
-                    target = SelectRandomUnfriendlyTarget(pVictim);
-                    if (!target)
-                        return SPELL_AURA_PROC_FAILED;
-                    basepoints0 = damage;
-                    triggered_spell_id = 22482;
-                    break;
-                }
-            }
+            target = SelectRandomUnfriendlyTarget(pVictim);
+            if (!target)
+                return SPELL_AURA_PROC_FAILED;
+            basepoints0 = damage;
+            triggered_spell_id = 22482;
             break;
         }
+        // Flurry - Warrior/Shaman
+        case 12966:
+        case 12967:
+        case 12968:
+        case 12969:
+        case 12970:
+        case 16257:
+        case 16277:
+        case 16278:
+        case 16279:
+        case 16280:
+            if (pVictim != GetTarget() || m_extraAttacksExecuting) // can only proc on main target
+                return SPELL_AURA_PROC_FAILED;
+            break;
     }
 
     // processed charge only counting case
@@ -979,6 +986,17 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     target = this;
                     if (roll_chance_i(10))
                         ((Player*)this)->Say("This is Madness!", LANG_UNIVERSAL);
+                    break;
+                }
+                case 42454: // Captured Totem - procs on death quest credit
+                {
+                    Unit* caster = triggeredByAura->GetCaster();
+                    if (!caster)
+                        return SPELL_AURA_PROC_FAILED;
+                    Unit* owner = caster->GetOwner();
+                    if (!owner)
+                        return SPELL_AURA_PROC_FAILED;
+                    CastSpell(owner, 42455, TRIGGERED_NONE);
                     break;
                 }
                 // Sunwell Exalted Caster Neck (Shattered Sun Pendant of Acumen neck)

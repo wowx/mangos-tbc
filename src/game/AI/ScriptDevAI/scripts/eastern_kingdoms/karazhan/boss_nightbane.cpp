@@ -172,6 +172,7 @@ struct boss_nightbaneAI : public npc_escortAI
         if (uiPointId == 31)
         {
             SetEscortPaused(true);
+            m_creature->HandleEmote(EMOTE_ONESHOT_LAND);
             m_creature->SetCanFly(false);
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
             m_creature->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
@@ -200,6 +201,8 @@ struct boss_nightbaneAI : public npc_escortAI
                     break;
                 case POINT_ID_GROUND:
                     // TODO: remove this once MMAPs are more reliable in the area
+                    m_creature->HandleEmote(EMOTE_ONESHOT_LAND);
+                    m_creature->SetIgnoreMMAP(false);
                     m_creature->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
                     m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND);
                     m_creature->SetCanFly(false);
@@ -300,6 +303,7 @@ struct boss_nightbaneAI : public npc_escortAI
                 {
                     // Start air phase movement (handled by creature_movement_template)
                     SetCombatMovement(false);
+                    m_creature->HandleEmote(EMOTE_ONESHOT_LIFTOFF);
                     m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
                     m_creature->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND);
                     m_creature->SetCanFly(true);

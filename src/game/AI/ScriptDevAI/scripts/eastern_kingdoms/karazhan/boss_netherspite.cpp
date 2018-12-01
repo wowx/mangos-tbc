@@ -179,11 +179,12 @@ struct boss_netherspiteAI : public ScriptedAI
             m_pInstance->SetData(TYPE_NETHERSPITE, DONE);
     }
 
-    void JustReachedHome() override
+    void EnterEvadeMode() override
     {
+        ScriptedAI::EnterEvadeMode();
+
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NETHERSPITE, FAIL);
-
         
         for (ObjectGuid& portalGuid : m_vPortalGuidList)
             if(Creature* portal = m_creature->GetMap()->GetCreature(portalGuid))
@@ -345,6 +346,7 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
     npc_netherspite_portalAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_uiOrientationTimer = 0;
         Reset();
     }
 
@@ -356,8 +358,6 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
 
     void Reset() override
     {
-        m_uiOrientationTimer = 0;
-
         m_uiCurrentBeamTarget = ObjectGuid();
     }
 
@@ -370,7 +370,9 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
 
             // update orientation every second to focus on Netherspite
             m_uiOrientationTimer = 1000;
-            m_creature->SetFacingToObject(pInvoker);
+            float angle = m_creature->GetAngle(pInvoker);
+            m_creature->SetFacingTo(angle);
+            m_creature->SetOrientation(angle);
 
             switch (m_creature->GetEntry())
             {
@@ -418,7 +420,11 @@ struct npc_netherspite_portalAI : public Scripted_NoMovementAI
                 if (m_pInstance)
                 {
                     if (Creature* pNetherspite = m_pInstance->GetSingleCreatureFromStorage(NPC_NETHERSPITE))
-                        m_creature->SetFacingToObject(pNetherspite);
+                    {
+                        float angle = m_creature->GetAngle(pNetherspite);
+                        m_creature->SetFacingTo(angle);
+                        m_creature->SetOrientation(angle);
+                    }
                 }
                 m_uiOrientationTimer = 1000;
             }

@@ -397,7 +397,6 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     // group is initialized in the reference constructor
     SetGroupInvite(nullptr);
     m_groupUpdateMask = 0;
-    m_auraUpdateMask = 0;
 
     duel = nullptr;
 
@@ -1312,7 +1311,7 @@ void Player::Update(const uint32 diff)
         if (diff >= m_DetectInvTimer)
         {
             HandleStealthedUnitsDetection();
-            m_DetectInvTimer = 3000;
+            m_DetectInvTimer = GetMap()->IsBattleGroundOrArena() ? 1000 : 3000;
         }
         else
             m_DetectInvTimer -= diff;
@@ -1965,7 +1964,7 @@ void Player::RegenerateAll()
 
     // Not in combat or they have regeneration
     if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT) ||
-            HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) || IsPolymorphed())
+            HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT))
     {
         RegenerateHealth();
         if (!isInCombat() && !HasAuraType(SPELL_AURA_INTERRUPT_REGEN))
@@ -2056,11 +2055,8 @@ void Player::RegenerateHealth()
 
     float addvalue = 0.0f;
 
-    // polymorphed case
-    if (IsPolymorphed())
-        addvalue = (float)GetMaxHealth() / 3;
     // normal regen case (maybe partly in combat case)
-    else if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT))
+    if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT))
     {
         addvalue = OCTRegenHPPerSpirit() * HealthIncreaseRate;
         if (!isInCombat())
@@ -2316,7 +2312,7 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid)
     }
 }
 
-void Player::SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP) const
+void Player::SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP, float groupRate) const
 {
     WorldPacket data(SMSG_LOG_XPGAIN, 21);
     data << (victim ? victim->GetObjectGuid() : ObjectGuid());// guid
@@ -2325,13 +2321,13 @@ void Player::SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 RestXP) const
     if (victim)
     {
         data << uint32(GivenXP);                            // experience without rested bonus
-        data << float(1);                                   // 1 - none 0 - 100% group bonus output
+        data << float(groupRate);                           // 1 - none 0 - 100% raid bonus penalty 100%+ group bonus
     }
-    data << uint8(0);                                       // new 2.4.0
+    data << uint8(0);                                       // Refer-A-Friend bonus unk value
     GetSession()->SendPacket(data);
 }
 
-void Player::GiveXP(uint32 xp, Creature* victim)
+void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
 {
     if (xp < 1)
         return;
@@ -2353,7 +2349,7 @@ void Player::GiveXP(uint32 xp, Creature* victim)
     // XP resting bonus for kill
     uint32 rested_bonus_xp = victim ? GetXPRestBonus(xp) : 0;
 
-    SendLogXPGain(xp, victim, rested_bonus_xp);
+    SendLogXPGain(xp, victim, rested_bonus_xp, groupRate);
 
     uint32 curXP = GetUInt32Value(PLAYER_XP);
     uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
@@ -2972,11 +2968,15 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
                     break;
                 }
             }
-            // We do not learn previous rank if its owned by a talent we don't know
-            if (!IsInWorld() || disabled || talent)        // at spells loading, no output, but allow save
-                addSpell(prev_spell, active, true, true, disabled);
-            else                                            // at normal learning
-                learnSpell(prev_spell, true);
+
+            if (!talent)
+            {
+                // We do not learn previous rank if its owned by a talent we don't know
+                if (!IsInWorld() || disabled)        // at spells loading, no output, but allow save
+                    addSpell(prev_spell, active, true, true, disabled);
+                else                                            // at normal learning
+                    learnSpell(prev_spell, true);
+            }
         }
 
         PlayerSpell newspell;
@@ -15610,15 +15610,24 @@ void Player::_LoadSpells(QueryResult* result)
 
     if (result)
     {
+        std::vector<std::tuple<uint32, bool, bool>> spells;
         do
         {
             Field* fields = result->Fetch();
 
             uint32 spell_id = fields[0].GetUInt32();
-
-            addSpell(spell_id, fields[1].GetBool(), false, false, fields[2].GetBool());
+            bool active = fields[1].GetBool();
+            bool disabled = fields[2].GetBool();
+            TalentSpellPos const* talentPos = GetTalentSpellPos(spell_id);
+            if (!talentPos)
+                spells.push_back(std::tuple<uint32, bool, bool>{ spell_id, active, disabled });
+            else
+                addSpell(spell_id, active, false, false, disabled);
         }
         while (result->NextRow());
+
+        for (auto& data : spells)
+            addSpell(std::get<0>(data), std::get<1>(data), false, false, std::get<2>(data));
 
         delete result;
     }
@@ -17644,7 +17653,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
         return false;
 
     // prevent stealth flight
-    RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+    // RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TALK);
 
     GetSession()->SendActivateTaxiReply(ERR_TAXIOK);
 
@@ -18922,9 +18931,9 @@ void Player::SendUpdateToOutOfRangeGroupMembers()
         group->UpdatePlayerOutOfRange(this);
 
     m_groupUpdateMask = GROUP_UPDATE_FLAG_NONE;
-    m_auraUpdateMask = 0;
-    if (Pet* pet = GetPet())
-        pet->ResetAuraUpdateMask();
+    ResetAuraUpdateMask();
+    if (Unit* charm = GetCharm())
+        charm->ResetAuraUpdateMask();
 }
 
 void Player::SendTransferAbortedByLockStatus(MapEntry const* mapEntry, AreaTrigger const* at, AreaLockStatus lockStatus, uint32 miscRequirement) const
@@ -19337,7 +19346,7 @@ BattleGroundBracketId Player::GetBattleGroundBracketIdFromLevel(BattleGroundType
 
 float Player::GetReputationPriceDiscount(Creature const* creature) const
 {
-    return GetReputationPriceDiscount(creature->getFactionTemplateEntry());
+    return GetReputationPriceDiscount(creature->GetFactionTemplateEntry());
 }
 
 float Player::GetReputationPriceDiscount(FactionTemplateEntry const* factionTemplate) const
@@ -20269,6 +20278,14 @@ void Player::SetTitle(CharTitlesEntry const* title, bool lost)
     GetSession()->SendPacket(data);
 }
 
+void Player::SaveTitles()
+{
+    std::string playerTitles;
+    for (uint32 i = 0; i < 2; ++i)
+        playerTitles += std::to_string(GetUInt32Value(PLAYER__FIELD_KNOWN_TITLES + i)) + " ";
+    CharacterDatabase.PExecute("UPDATE characters SET KnownTitles='%s' WHERE guid = '%u'", playerTitles.data(), GetGUIDLow());
+}
+
 Item* Player::ConvertItem(Item* item, uint32 newItemId)
 {
     uint16 pos = item->GetPos();
@@ -20629,7 +20646,7 @@ void Player::LearnTalent(uint32 talentId, uint32 talentRank)
 
 void Player::UpdateFallInformationIfNeed(MovementInfo const& minfo, uint16 opcode)
 {
-    if (m_lastFallTime >= minfo.GetFallTime() || m_lastFallZ <= minfo.GetPos()->z || opcode == MSG_MOVE_FALL_LAND)
+    if (m_lastFallTime >= minfo.GetFallTime() || m_lastFallZ <= minfo.GetPos()->z || minfo.HasMovementFlag(MOVEFLAG_FLYING2) || opcode == MSG_MOVE_FALL_LAND)
         SetFallInformation(minfo.GetFallTime(), minfo.GetPos()->z);
 }
 
@@ -20984,9 +21001,10 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, uint32& m
     // Map's state check
     if (map && map->IsDungeon())
     {
-        // cannot enter if the instance is full (player cap), GMs don't count
-        if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
-            return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
+        // cannot enter if the instance is full (player cap), GMs don't count, must not check when teleporting around the same map
+        if (GetMapId() != at->target_mapId)
+            if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
+                return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
 
         // In Combat check
         if (map && map->GetInstanceData() && map->GetInstanceData()->IsEncounterInProgress())

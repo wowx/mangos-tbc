@@ -633,7 +633,6 @@ ChatCommand* ChatHandler::getCommandTable()
     static ChatCommand sendCommandTable[] =
     {
         { "mass",           SEC_ADMINISTRATOR,  true,  nullptr,                                        "", sendMassCommandTable },
-
         { "items",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleSendItemsCommand,           "", nullptr },
         { "mail",           SEC_MODERATOR,      true,  &ChatHandler::HandleSendMailCommand,            "", nullptr },
         { "message",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleSendMessageCommand,         "", nullptr },
@@ -641,31 +640,39 @@ ChatCommand* ChatHandler::getCommandTable()
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
+    static ChatCommand arenaCommandTable[] =
+    {
+        { "flushpoints",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaFlushPointsCommand,      "", nullptr },
+        { "sendRewards",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaSeasonRewardsCommand,    "", nullptr },
+        { "resetData",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaDataReset,               "", nullptr },
+        { nullptr,              0,                  false, nullptr,                                          "", nullptr }
+    };
+
     static ChatCommand serverIdleRestartCommandTable[] =
     {
         { "cancel",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCancelCommand, "", nullptr },
-        { "",            SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerIdleRestartCommand,   "", nullptr },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerIdleRestartCommand,   "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
     static ChatCommand serverIdleShutdownCommandTable[] =
     {
         { "cancel",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCancelCommand, "", nullptr },
-        { "",            SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerIdleShutDownCommand,  "", nullptr },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerIdleShutDownCommand,  "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
     static ChatCommand serverRestartCommandTable[] =
     {
         { "cancel",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCancelCommand, "", nullptr },
-        { "",            SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerRestartCommand,       "", nullptr },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerRestartCommand,       "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
     static ChatCommand serverShutdownCommandTable[] =
     {
         { "cancel",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCancelCommand, "", nullptr },
-        { "",            SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCommand,      "", nullptr },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleServerShutDownCommand,      "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
@@ -795,6 +802,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "cooldown",       SEC_ADMINISTRATOR,  false, nullptr,                                        "", cooldownCommandTable },
         { "unlearn",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleUnLearnCommand,             "", nullptr },
         { "distance",       SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGetDistanceCommand,         "", nullptr },
+        { "los",            SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGetLosCommand,              "", nullptr },
         { "recall",         SEC_MODERATOR,      false, &ChatHandler::HandleRecallCommand,              "", nullptr },
         { "save",           SEC_PLAYER,         false, &ChatHandler::HandleSaveCommand,                "", nullptr },
         { "saveall",        SEC_MODERATOR,      true,  &ChatHandler::HandleSaveAllCommand,             "", nullptr },
@@ -822,7 +830,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "whispers",       SEC_MODERATOR,      false, &ChatHandler::HandleWhispersCommand,            "", nullptr },
         { "pinfo",          SEC_GAMEMASTER,     true,  &ChatHandler::HandlePInfoCommand,               "", nullptr },
         { "respawn",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleRespawnCommand,             "", nullptr },
-        { "send",           SEC_MODERATOR,      true,  nullptr,                                        "", sendCommandTable     },
+        { "send",           SEC_MODERATOR,      true,  nullptr,                                        "", sendCommandTable },
         { "loadscripts",    SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleLoadScriptsCommand,         "", nullptr },
         { "mute",           SEC_MODERATOR,      true,  &ChatHandler::HandleMuteCommand,                "", nullptr },
         { "unmute",         SEC_MODERATOR,      true,  &ChatHandler::HandleUnmuteCommand,              "", nullptr },
@@ -830,7 +838,8 @@ ChatCommand* ChatHandler::getCommandTable()
         { "cometome",       SEC_ADMINISTRATOR,  false, &ChatHandler::HandleComeToMeCommand,            "", nullptr },
         { "damage",         SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDamageCommand,              "", nullptr },
         { "combatstop",     SEC_GAMEMASTER,     false, &ChatHandler::HandleCombatStopCommand,          "", nullptr },
-        { "flusharenapoints", SEC_ADMINISTRATOR, false, &ChatHandler::HandleFlushArenaPointsCommand,    "", nullptr },
+        { "arena",          SEC_ADMINISTRATOR,  false, nullptr,                                        "", arenaCommandTable },
+        { "flusharenapoints", SEC_ADMINISTRATOR, false, &ChatHandler::HandleArenaFlushPointsCommand,   "", nullptr },
         { "repairitems",    SEC_GAMEMASTER,     true,  &ChatHandler::HandleRepairitemsCommand,         "", nullptr },
         { "stable",         SEC_ADMINISTRATOR,  false, &ChatHandler::HandleStableCommand,              "", nullptr },
         { "waterwalk",      SEC_GAMEMASTER,     false, &ChatHandler::HandleWaterwalkCommand,           "", nullptr },

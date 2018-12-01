@@ -370,6 +370,7 @@ enum SelectFlags
     SELECT_FLAG_RANGE_AOE_RANGE     = 0x0800,               // For AOE targeted abilities like frost nova
     SELECT_FLAG_POWER_NOT_MANA      = 0x1000,               // Used in some dungeon encounters
     SELECT_FLAG_USE_EFFECT_RADIUS   = 0x2000,               // For AOE targeted abilities which have correct data in effect index 0
+    SELECT_FLAG_SKIP_TANK           = 0x4000,               // Not getVictim - tank is not always top threat
 };
 
 enum RegenStatsFlags
@@ -608,7 +609,7 @@ class Creature : public Unit
         bool IsDespawned() const { return getDeathState() ==  DEAD; }
         void SetCorpseDelay(uint32 delay) { m_corpseDelay = delay; }
         void ReduceCorpseDecayTimer();
-        uint32 GetCorpseDecayTimer() const { return m_corpseDecayTimer; }
+        TimePoint GetCorpseDecayTimer() const { return m_corpseExpirationTime; }
         bool IsRacialLeader() const { return GetCreatureInfo()->RacialLeader; }
         bool IsCivilian() const { return (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_CIVILIAN) != 0; }
         bool IsNoAggroOnSight() const { return (GetCreatureInfo()->ExtraFlags & CREATURE_EXTRA_FLAG_NO_AGGRO_ON_SIGHT) != 0; }
@@ -625,7 +626,7 @@ class Creature : public Unit
 
         void FillGuidsListFromThreatList(GuidVector& guids, uint32 maxamount = 0);
 
-        bool IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf) override;
+        bool IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf, uint8 effectMask) override;
         bool IsImmuneToDamage(SpellSchoolMask meleeSchoolMask) override;
         bool IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index, bool castOnSelf) const override;
 
@@ -865,6 +866,8 @@ class Creature : public Unit
 
         void UnsummonCleanup(); // cleans up data before unsummon of various creatures
 
+        bool IsCorpseExpired() const;
+
         // vendor items
         VendorItemCounts m_vendorItemCounts;
 
@@ -874,7 +877,7 @@ class Creature : public Unit
         CreatureLootStatus m_lootStatus;                    // loot status (used to know when we could loot, pickpocket or skin)
 
         /// Timers
-        uint32 m_corpseDecayTimer;                          // (msecs)timer for death or corpse disappearance
+        TimePoint m_corpseExpirationTime;                   // (msecs) time point of corpse decay
         time_t m_respawnTime;                               // (secs) time of next respawn
         uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning
         uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance

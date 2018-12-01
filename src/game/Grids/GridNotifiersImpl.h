@@ -153,7 +153,7 @@ inline void MaNGOS::CreatureVisitObjectsNotifier::Visit(PlayerMapType& m)
     for (auto& iter : m)
     {
         Player* player = iter.getSource();
-        if (player->isAlive() && !player->IsTaxiFlying())
+        if (!player->isAlive() || player->IsTaxiFlying())
             continue;
 
         if (player->AI())
@@ -248,7 +248,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     }
 
     // Check target immune to spell or aura
-    if (target->IsImmuneToSpell(spellInfo, false) || target->IsImmuneToSpellEffect(spellInfo, eff_index, false))
+    if (target->IsImmuneToSpell(spellInfo, false, eff_index) || target->IsImmuneToSpellEffect(spellInfo, eff_index, false))
         return;
 
     // Apply PersistentAreaAura on target

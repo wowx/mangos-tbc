@@ -1045,7 +1045,7 @@ void ScriptMgr::CheckScriptTexts(ScriptMapMapName const& scripts, std::set<int32
                     for (auto& data : vector)
                     {
                         if (!sObjectMgr.GetMangosStringLocale(data.first))
-                            sLog.outErrorDb("Table `dbscript_string` is missing string id %u, used in database script template table dbscript_string_template id %u.", data.first, itrM->second.talk.stringTemplateId);
+                            sLog.outErrorDb("Table `dbscript_string` is missing string id %d, used in database script template table dbscript_string_template id %u.", data.first, itrM->second.talk.stringTemplateId);
                     }
                 }
             }
@@ -2245,7 +2245,11 @@ bool ScriptAction::HandleScriptStep()
                 break;
 
             // ToDo: Change this to pGo->ForcedDespawn() when function is implemented!
-            ((GameObject*)pTarget)->SetLootState(GO_JUST_DEACTIVATED);
+            if (((GameObject*)pTarget)->GetSpellId())
+                ((GameObject*)pTarget)->Delete();
+            else
+                ((GameObject*)pTarget)->SetLootState(GO_JUST_DEACTIVATED);
+
             break;
         }
         case SCRIPT_COMMAND_RESPAWN:                        // 41

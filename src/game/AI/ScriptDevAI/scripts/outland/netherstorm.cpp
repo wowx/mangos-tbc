@@ -705,7 +705,7 @@ bool QuestAccept_npc_bessy(Player* pPlayer, Creature* pCreature, const Quest* pQ
 {
     if (pQuest->GetQuestId() == QUEST_COWS_COME_HOME)
     {
-        pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_TOGGLE_NON_ATTACKABLE);
+        pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_TOGGLE_NON_ATTACKABLE);
 
         if (npc_bessyAI* pBessyAI = dynamic_cast<npc_bessyAI*>(pCreature->AI()))
             pBessyAI->Start(true, pPlayer, pQuest);
@@ -2619,7 +2619,10 @@ struct npc_adyen_the_lightwardenAI : public ScriptedAI
         if (Creature* ishanah = m_creature->GetMap()->GetCreature(m_ishanahGuid))
             ishanah->ForcedDespawn();
         if (Creature* socrethar = m_creature->GetMap()->GetCreature(m_socretharGuid))
+        {
             socrethar->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER);
+            socrethar->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+        }
         m_creature->ForcedDespawn();
     }
 
@@ -2685,6 +2688,7 @@ struct npc_adyen_the_lightwardenAI : public ScriptedAI
                     case 8:
                         summoned->GetMotionMaster()->Clear(false, true);
                         summoned->GetMotionMaster()->MoveIdle();
+                        summoned->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                         if (Creature* kaylaan = m_creature->GetMap()->GetCreature(m_kaylaanGuid))
                         {
                             DoScriptText(SAY_KAYLAAN_6, kaylaan, GetPlayerTarget());
@@ -2768,6 +2772,7 @@ struct npc_adyen_the_lightwardenAI : public ScriptedAI
         {
             Creature* ishanah = m_creature->SummonCreature(NPC_ISHANAH, 4866.2f, 3799.016f, 199.141f, 0.4680258f, TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN, 3600000, true, true, 1, FACTION_DEATHBLOW);
             ishanah->SetUInt32Value(UNIT_NPC_FLAGS, 0);
+            ishanah->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC); // fix for blizzlike bug that can occur on retail
             ishanah->GetMotionMaster()->Clear(false, true);
             ishanah->GetMotionMaster()->MoveWaypoint(PATH_ID_DEATHBLOW);
             if (Creature* socrethar = m_creature->GetMap()->GetCreature(m_socretharGuid))
@@ -3032,7 +3037,7 @@ bool AreaTrigger_at_socrethar_seat(Player* player, AreaTriggerEntry const* /*at*
 
 bool GossipHello_npc_adyen_the_lightwarden(Player* player, Creature* creature)
 {
-    uint32 gossipId = GOSSIP_SOCRETHAR_DEAD_PLACEHOLDER_ID;
+    uint32 gossipId = GOSSIP_NETHERSTORM;
 
     // custom code required because it utilizes two entries
     if (creature->getFaction() == FACTION_SHATTRATH)
@@ -3041,15 +3046,9 @@ bool GossipHello_npc_adyen_the_lightwarden(Player* player, Creature* creature)
     {
         if (npc_adyen_the_lightwardenAI* ai = dynamic_cast<npc_adyen_the_lightwardenAI*>(creature->AI()))
         {
-            if (ai->m_eventStarted)
-                gossipId = GOSSIP_NETHERSTORM;
-            else if (Creature* socrethar = ((ScriptedInstance*)creature->GetMap()->GetInstanceData())->GetSingleCreatureFromStorage(NPC_SOCRETHAR))
-            {
-                if (socrethar->isAlive())
-                    gossipId = GOSSIP_NETHERSTORM;
-                else
-                    ai->DespawnEvent();
-            }
+            Creature* socrethar = ((ScriptedInstance*)creature->GetMap()->GetInstanceData())->GetSingleCreatureFromStorage(NPC_SOCRETHAR);
+            if (!socrethar || !socrethar->isAlive() || socrethar->isInCombat())
+                ai->DespawnEvent();
         }
     }
     player->PrepareGossipMenu(creature, gossipId);
@@ -3065,8 +3064,9 @@ bool GossipSelect_npc_adyen_the_lightwarden(Player* player, Creature* creature, 
             ai->StartEvent(player);
 
         player->CLOSE_GOSSIP_MENU();
+        return true;
     }
-    return true;
+    return false;
 }
 
 void AddSC_netherstorm()
