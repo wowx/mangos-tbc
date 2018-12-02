@@ -1870,7 +1870,13 @@ void Aura::TriggerSpell()
             }
             case 16191:                                     // Mana Tide
             {
-                triggerTarget->CastCustomSpell(triggerTarget, trigger_spell_id, &m_modifier.m_amount, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+                triggerCaster->CastCustomSpell(nullptr, trigger_spell_id, &m_modifier.m_amount, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+                return;
+            }
+            case 19695:                                     // Inferno
+            {
+                int32 damageForTick[8] = { 500, 500, 1000, 1000, 2000, 2000, 3000, 5000 };
+                triggerCaster->CastCustomSpell(nullptr, 19698, &damageForTick[GetAuraTicks() - 1], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr);
                 return;
             }
             case 29768:                                     // Overload
@@ -1883,9 +1889,6 @@ void Aura::TriggerSpell()
             }
             case 32930:                                     // Blue beam
                 return; // Never seems to go off in sniffs - hides errors
-            case 33525:                                     // Ground Slam
-                triggerTarget->CastSpell(triggerTarget, trigger_spell_id, TRIGGERED_OLD_TRIGGERED, nullptr, this, casterGUID);
-                return;
             case 38736:                                     // Rod of Purification - for quest 10839 (Veil Skith: Darkstone of Terokk)
             {
                 if (Unit* caster = GetCaster())
