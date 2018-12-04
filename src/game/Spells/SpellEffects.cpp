@@ -4758,6 +4758,9 @@ void Spell::EffectPickPocket(SpellEffectIndex /*eff_idx*/)
     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT || !m_caster->CanAttackNow(unitTarget))
         return;
 
+    Creature* creatureTarget = static_cast<Creature*>(unitTarget);
+    Player* playerCaster = static_cast<Player*>(m_caster);
+
     // victim have to be alive and humanoid or undead
     if (unitTarget->isAlive() && (unitTarget->GetCreatureTypeMask() & CREATURE_TYPEMASK_HUMANOID_OR_UNDEAD) != 0)
     {
@@ -4769,16 +4772,27 @@ void Spell::EffectPickPocket(SpellEffectIndex /*eff_idx*/)
             // DEBUG_LOG("Sending loot from pickpocket");
             Loot*& loot = unitTarget->loot;
             if (!loot)
-                loot = new Loot((Player*)m_caster, (Creature*)unitTarget, LOOT_PICKPOCKETING);
+                loot = new Loot(playerCaster, creatureTarget, LOOT_PICKPOCKETING);
             else
             {
-                if (loot->GetLootType() != LOOT_PICKPOCKETING)
+                if (loot->GetLootType() == LOOT_PICKPOCKETING)
+                {
+                    auto msec = (World::GetCurrentClockTime() - loot->GetCreateTime()).count();
+
+                    if (msec > creatureTarget->GetRespawnDelay() * 1000)
+                    {
+                        // refill pickpocket
+                        delete loot;
+                        loot = new Loot(playerCaster, creatureTarget, LOOT_PICKPOCKETING);
+                    }
+                }
+                else
                 {
                     delete loot;
-                    loot = new Loot((Player*)m_caster, (Creature*)unitTarget, LOOT_PICKPOCKETING);
+                    loot = new Loot(playerCaster, creatureTarget, LOOT_PICKPOCKETING);
                 }
             }
-            loot->ShowContentTo((Player*)m_caster);
+            loot->ShowContentTo(playerCaster);
         }
         else
         {
@@ -6553,7 +6567,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)
                         return;
-                    
+
                     unitTarget->RemoveAurasDueToSpell(36904);
                     unitTarget->CastSpell(unitTarget, 37013, TRIGGERED_NONE);
                     return;
@@ -6705,6 +6719,17 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->CombatStop(true);
                     m_caster->RemoveAurasDueToSpell(40735); // Defiant and Enraged
                     m_caster->RemoveAurasDueToSpell(40732); // Lazy and Good for Nothing
+                    return;
+                }
+                case 40828:                                 // Banish the Demons: Cast Kill Credit on Master
+                {
+                    if (!unitTarget)
+                        return;
+
+                    // Serverside 40829 does not exist
+                    if (Unit* spawner = unitTarget->GetSpawner())
+                        ((Player*)spawner)->RewardPlayerAndGroupAtEventCredit(unitTarget->GetEntry(), unitTarget);
+
                     return;
                 }
                 case 41055:                                 // Copy Weapon
@@ -7342,6 +7367,10 @@ void Spell::EffectActivateObject(SpellEffectIndex eff_idx)
             switch (m_spellInfo->Id)
             {
                 case 24731:
+                case 40964:         // Fel Crystalforge: Create 1 Flask
+                case 40965:         // Fel Crystalforge: Create 5 Flasks
+                case 40968:         // Bash'ir Crystalforge: Create 1 Flask
+                case 40970:         // Bash'ir Crystalforge: Create 5 Flasks
                 case 42868:
                     gameObjTarget->SendGameObjectCustomAnim(gameObjTarget->GetObjectGuid());
                     break;

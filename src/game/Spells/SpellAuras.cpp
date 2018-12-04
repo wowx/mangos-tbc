@@ -2215,6 +2215,17 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         if (roll_chance_i(20))              // backfire stun
                             target->CastSpell(target, 51581, TRIGGERED_OLD_TRIGGERED, nullptr, this);
                         return;
+                    case 42416:                             // Apexis Mob Faction Check Aura
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        if (target->GetPositionX() > 3000.f)
+                            ((Creature*)target)->UpdateEntry(22243);
+                        else
+                            ((Creature*)target)->UpdateEntry(23386);
+                        return;
+                    }
                     case 43873:                             // Headless Horseman Laugh
                         target->PlayDistanceSound(11965);
                         return;
@@ -2481,6 +2492,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             case 39091:                                     // Negative Charge
                 target->RemoveAurasDueToSpell(39092);
                 return;
+            case 40830:                                     // Banish the Demons: Banishment Beam Periodic Aura Effect
+            {
+                if (m_removeMode == AURA_REMOVE_BY_DEATH)
+                    target->CastSpell(nullptr, 40828, TRIGGERED_OLD_TRIGGERED);
+                return;
+            }
             case 41099:                                     // Battle Stance
             {
                 // Battle Aura
@@ -4725,9 +4742,6 @@ void Aura::HandlePeriodicHeal(bool apply, bool /*Real*/)
             case 12939: m_modifier.m_amount = target->GetMaxHealth() / 3; break; // Polymorph Heal Effect
             default: m_modifier.m_amount = caster->SpellHealingBonusDone(target, GetSpellProto(), m_modifier.m_amount, DOT, GetStackAmount()); break;
         }
-
-        if (GetId() == 37121) // Crystalcore Mechanic - Recharge
-            caster->SetTurningOff(apply);
     }
 }
 

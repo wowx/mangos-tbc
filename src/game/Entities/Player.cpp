@@ -6955,7 +6955,7 @@ void Player::_ApplyItemBonuses(ItemPrototype const* proto, uint8 slot, bool appl
 
     if (proto->ArcaneRes)
         HandleStatModifier(UNIT_MOD_RESISTANCE_ARCANE, BASE_VALUE, float(proto->ArcaneRes), apply);
-    
+
     if (proto->IsWeapon())
     {
         WeaponAttackType attType = BASE_ATTACK;
@@ -13644,13 +13644,17 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
 
                     SendQuestUpdateAddItem(qInfo, j, curitemcount, additemcount);
                 }
+
                 if (CanCompleteQuest(questid))
-                    CompleteQuest(questid);
+                    CompleteQuest(questid); // will call UpdateForQuestWorldObjects to clean sparkles for this quest on client
+                else if (q_status.m_itemcount[j] == reqitemcount)
+                    UpdateForQuestWorldObjects(); // call UpdateForQuestWorldObjects to remove sparkles from finished objective on client
+
+                // we should remove this return if there is possibility that an quest item can be used in more than one quest
                 return;
             }
         }
     }
-    UpdateForQuestWorldObjects();
 }
 
 void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
@@ -19710,22 +19714,19 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
     RewardHonor(pVictim, 1);
 
     // xp and reputation only in !PvP case
-    if (!pVictim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+    if (!pVictim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && pVictim->GetTypeId() == TYPEID_UNIT)
     {
-        if (pVictim->GetTypeId() == TYPEID_UNIT)
-        {
-            Creature* creatureVictim = static_cast<Creature*>(pVictim);
-            RewardReputation(creatureVictim, 1);
-            uint32 xp = MaNGOS::XP::Gain(this, creatureVictim);
-            GiveXP(xp, creatureVictim);
+        Creature* creatureVictim = static_cast<Creature*>(pVictim);
+        RewardReputation(creatureVictim, 1);
+        uint32 xp = MaNGOS::XP::Gain(this, creatureVictim);
+        GiveXP(xp, creatureVictim);
 
-            if (Pet* pet = GetPet())
-                pet->GivePetXP(xp);
+        if (Pet* pet = GetPet())
+            pet->GivePetXP(xp);
 
-            // normal creature (not pet/etc) can be only in !PvP case        
-            if (CreatureInfo const* normalInfo = creatureVictim->GetCreatureInfo())
-                KilledMonster(normalInfo, creatureVictim->GetObjectGuid());
-        }
+        // normal creature (not pet/etc) can be only in !PvP case
+        if (CreatureInfo const* normalInfo = creatureVictim->GetCreatureInfo())
+            KilledMonster(normalInfo, creatureVictim->GetObjectGuid());
     }
 }
 
