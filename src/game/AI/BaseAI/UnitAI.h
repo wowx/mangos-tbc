@@ -330,10 +330,6 @@ class UnitAI
         /// Check if this AI can be replaced in possess case
         // virtual bool IsControllable() const { return false; }
 
-        // Called when victim entered water and creature can not enter water
-        // TODO: rather unused
-        virtual bool canReachByRangeAttack(Unit*) { return false; }
-
         ///== Helper functions =============================
 
         /// This function is used to do the actual melee damage (if possible)
@@ -451,6 +447,9 @@ class UnitAI
         virtual void JustRootedTarget(SpellEntry const* spellInfo, Unit* victim) { JustStoppedMovementOfTarget(spellInfo, victim); }
         virtual void JustStunnedTarget(SpellEntry const* spellInfo, Unit* victim) { JustStoppedMovementOfTarget(spellInfo, victim); }
         virtual void JustStoppedMovementOfTarget(SpellEntry const* spellInfo, Unit* victim) {}
+
+        // AI selection - works in connection with IsPossessCharmType
+        virtual bool CanHandleCharm() { return false; }
 
     protected:
         virtual std::string GetAIName() { return "UnitAI"; }

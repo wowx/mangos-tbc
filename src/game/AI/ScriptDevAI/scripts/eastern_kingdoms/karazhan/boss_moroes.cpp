@@ -75,9 +75,9 @@ enum MoroesActions
     MOROES_ACTION_GAROTTE,
 };
 
-struct boss_moroesAI : public ScriptedAI, public TimerAI
+struct boss_moroesAI : public ScriptedAI, public CombatTimerAI
 {
-    boss_moroesAI(Creature* pCreature) : ScriptedAI(pCreature), TimerAI(MOROES_ACTION_MAX)
+    boss_moroesAI(Creature* pCreature) : ScriptedAI(pCreature), CombatTimerAI(MOROES_ACTION_MAX)
     {
         m_pInstance  = (ScriptedInstance*)pCreature->GetInstanceData();
         AddCombatAction(MOROES_ACTION_VANISH, 0);
@@ -107,6 +107,9 @@ struct boss_moroesAI : public ScriptedAI, public TimerAI
 
         DisableTimer(MOROES_ACTION_GAROTTE);
         SetActionReadyStatus(MOROES_ACTION_ENRAGE, true);
+
+        SetCombatScriptStatus(false);
+        SetCombatMovement(true);
 
         DoSpawnGuests();
     }
@@ -256,18 +259,19 @@ struct boss_moroesAI : public ScriptedAI, public TimerAI
                 {
                     case MOROES_ACTION_VANISH:
                     {
-                        if (DoCastSpellIfCan(m_creature, SPELL_VANISH) == CAST_OK)
-                        {
-                            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
-                                target->CastSpell(nullptr, SPELL_TAUNT, TRIGGERED_NONE);
-                            m_creature->SelectHostileTarget(); // apply taunt
-                            SetCombatScriptStatus(true);
-                            m_attackAngle = M_PI_F;
-                            DoStartMovement(m_creature->getVictim());
-                            ResetTimer(i, GetSubsequentActionTimer(i));
-                            SetActionReadyStatus(i, false);
-                            ResetTimer(MOROES_ACTION_GAROTTE, 9500);
-                        }
+                        Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_GARROTE, SELECT_FLAG_PLAYER | SELECT_FLAG_NOT_AURA);
+                        if (!target) // if no target without garrote found - select any random
+                            target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER);
+                        target->CastSpell(nullptr, SPELL_TAUNT, TRIGGERED_OLD_TRIGGERED); // TODO: Needs to send both packets
+                        m_creature->SelectHostileTarget(); // apply taunt before vanish
+                        DoCastSpellIfCan(nullptr, SPELL_VANISH);
+                        SetCombatScriptStatus(true);
+                        SetMeleeEnabled(false);
+                        m_attackAngle = M_PI_F;
+                        DoStartMovement(m_creature->getVictim());
+                        ResetTimer(i, GetSubsequentActionTimer(i));
+                        SetActionReadyStatus(i, false);
+                        ResetTimer(MOROES_ACTION_GAROTTE, 9500);
                         break;
                     }
                     case MOROES_ACTION_BLIND:

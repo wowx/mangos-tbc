@@ -1094,7 +1094,7 @@ struct CharmInfo
         explicit CharmInfo(Unit* unit);
         ~CharmInfo();
 
-        void SetCharmState(std::string const& ainame = "PetAI", bool withNewThreatList = true);
+        void SetCharmState(std::string const& ainame, bool withNewThreatList = true);
         void ResetCharmState();
         uint32 GetPetNumber() const { return m_petnumber; }
         void SetPetNumber(uint32 petnumber, bool statwindow);
@@ -1430,7 +1430,7 @@ class Unit : public WorldObject
         void StopAttackFaction(uint32 faction_id);
         Unit* SelectRandomUnfriendlyTarget(Unit* except = nullptr, float radius = ATTACK_DISTANCE) const;
         Unit* SelectRandomFriendlyTarget(Unit* except = nullptr, float radius = ATTACK_DISTANCE) const;
-        bool hasNegativeAuraWithInterruptFlag(uint32 flag) const;
+        bool HasDamageInterruptibleStunAura() const;
         void SendMeleeAttackStop(Unit* victim) const;
         void SendMeleeAttackStart(Unit* pVictim) const;
 
@@ -2134,9 +2134,9 @@ class Unit : public WorldObject
         void AddThreat(Unit* pVictim, float threat = 0.0f, bool crit = false, SpellSchoolMask schoolMask = SPELL_SCHOOL_MASK_NONE, SpellEntry const* threatSpell = nullptr);
         float ApplyTotalThreatModifier(float threat, SpellSchoolMask schoolMask = SPELL_SCHOOL_MASK_NORMAL);
         void DeleteThreatList();
-        bool IsSecondChoiceTarget(Unit* pTarget, bool checkThreatArea) const;
         bool SelectHostileTarget();
-        bool IsOutOfThreatArea(Unit* victim) const;
+        bool IsSuppressedTarget(Unit* target) const;
+        bool IsOfflineTarget(Unit* victim) const;
         void TauntUpdate();
         void FixateTarget(Unit* taunter);
         ThreatManager& getThreatManager() { return GetCombatData()->threatManager; }
@@ -2349,6 +2349,7 @@ class Unit : public WorldObject
         void ScheduleAINotify(uint32 delay, bool forced = false);
         bool IsAINotifyScheduled() const { return bool(m_AINotifyEvent);}
         void FinalizeAINotifyEvent() { m_AINotifyEvent = nullptr; }
+        void AbortAINotifyEvent();
         void OnRelocated();
 
         bool IsLinkingEventTrigger() { return m_isCreatureLinkingTrigger; }
@@ -2372,7 +2373,7 @@ class Unit : public WorldObject
         Unit* TakePossessOf(SpellEntry const* spellEntry, SummonPropertiesEntry const* summonProp, uint32 effIdx, float x, float y, float z, float ang);
 
         // Take charm of an unit
-        bool TakeCharmOf(Unit* charmed, bool advertised = true);
+        bool TakeCharmOf(Unit* charmed, uint32 spellId = 0, bool advertised = true);
 
         // Break own charm effects on a specific charmed unit
         void BreakCharmOutgoing(Unit* charmed);
@@ -2384,7 +2385,7 @@ class Unit : public WorldObject
         void BreakCharmIncoming();
 
         // Uncharm (physically revert the charm effect) the unit and reset player control if required
-        void Uncharm(Unit* charmed);
+        void Uncharm(Unit* charmed, uint32 spellId = 0);
 
         // Combat prevention
         bool CanEnterCombat() { return m_canEnterCombat && m_evadeMode != EVADE_HOME; }

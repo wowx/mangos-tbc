@@ -62,6 +62,7 @@
 #include "Server/DBCStores.h"
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
+#include "World/WorldStateDefines.h"
 #include "World/WorldState.h"
 
 #ifdef BUILD_PLAYERBOT
@@ -2179,7 +2180,7 @@ struct SetGameMasterOnHelper
     void operator()(Unit* unit) const
     {
         unit->setFaction(35);
-        unit->getHostileRefManager().updateOnlineOfflineState(false);
+        unit->getHostileRefManager().clearReferences();
     }
 };
 
@@ -2189,7 +2190,7 @@ struct SetGameMasterOffHelper
     void operator()(Unit* unit) const
     {
         unit->setFaction(faction);
-        unit->getHostileRefManager().updateOnlineOfflineState(true);
+        unit->getHostileRefManager().clearReferences();
     }
     uint32 faction;
 };
@@ -2242,7 +2243,7 @@ void Player::SetGameMaster(bool on)
 
     m_camera.UpdateVisibilityForOwner();
     UpdateObjectVisibility();
-    UpdateForQuestWorldObjects();
+    UpdateEverything();
 }
 
 void Player::SetGMVisible(bool on)
@@ -6574,13 +6575,19 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
         sOutdoorPvPMgr.HandlePlayerEnterZone(this, newZone);
         sWorldState.HandlePlayerEnterZone(this, newZone);
 
-        SendInitWorldStates(newZone, newArea);              // only if really enters to new zone, not just area change, works strange...
-
         if (sWorld.getConfig(CONFIG_BOOL_WEATHER))
         {
             Weather* wth = GetMap()->GetWeatherSystem()->FindOrCreateWeather(newZone);
             wth->SendWeatherUpdateToPlayer(this);
         }
+    }
+
+    if (m_areaUpdateId != newArea)
+    {
+        SendInitWorldStates(newZone, newArea);              // only if really enters to new zone, not just area change, works strange...
+
+        sWorldState.HandlePlayerLeaveArea(this, m_areaUpdateId);
+        sWorldState.HandlePlayerEnterArea(this, newArea);
     }
 
     m_zoneUpdateId    = newZone;
@@ -14087,12 +14094,13 @@ void Player::SendQuestReward(Quest const* pQuest, uint32 XP) const
     GetSession()->SendPacket(data);
 }
 
-void Player::SendQuestFailed(uint32 quest_id) const
+void Player::SendQuestFailed(uint32 quest_id, uint32 reason) const
 {
     if (quest_id)
     {
         WorldPacket data(SMSG_QUESTGIVER_QUEST_FAILED, 4);
         data << uint32(quest_id);
+        data << uint32(reason);
         GetSession()->SendPacket(data);
         DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_QUEST_FAILED");
     }
@@ -19477,6 +19485,31 @@ void Player::UpdateForQuestWorldObjects()
         }
     }
     udata.BuildPacket(packet);
+    GetSession()->SendPacket(packet);
+}
+
+void Player::UpdateEverything()
+{
+    if (m_clientGUIDs.empty())
+        return;
+
+    UpdateData updateDataCreature;
+    UpdateData updateDataRest;
+    WorldPacket packet;
+    for (GuidSet::const_iterator itr = m_clientGUIDs.begin(); itr != m_clientGUIDs.end(); ++itr)
+    {
+        if (WorldObject* obj = GetMap()->GetWorldObject(*itr))
+        {
+            if (obj->GetTypeId() == TYPEID_UNIT)
+                obj->BuildForcedValuesUpdateBlockForPlayer(&updateDataCreature, this);
+            else
+                obj->BuildValuesUpdateBlockForPlayer(&updateDataRest, this);
+        }
+    }
+    updateDataCreature.BuildPacket(packet); // protection against too big packets - TODO: extend to all
+    GetSession()->SendPacket(packet);
+    packet.clear();
+    updateDataRest.BuildPacket(packet);
     GetSession()->SendPacket(packet);
 }
 

@@ -212,11 +212,13 @@ ChatCommand* ChatHandler::getCommandTable()
         { "equiperror",     SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendEquipErrorCommand,      "", nullptr },
         { "opcode",         SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendOpcodeCommand,          "", nullptr },
         { "poi",            SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendPoiCommand,             "", nullptr },
+        { "qfailedresult",  SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendQuestFailedMsgCommand,  "", nullptr },
         { "qpartymsg",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendQuestPartyMsgCommand,   "", nullptr },
         { "qinvalidmsg",    SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendQuestInvalidMsgCommand, "", nullptr },
         { "sellerror",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendSellErrorCommand,       "", nullptr },
         { "spellfail",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendSpellFailCommand,       "", nullptr },
         { "spellVisual",    SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSpellVisual,                "", nullptr },
+        { "worldstate",     SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSendWorldState,             "", nullptr },
         { nullptr,          0,                  false, nullptr,                                             "", nullptr }
     };
 

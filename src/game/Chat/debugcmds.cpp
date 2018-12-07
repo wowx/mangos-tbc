@@ -349,6 +349,20 @@ bool ChatHandler::HandleDebugSendChatMsgCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleDebugSendQuestFailedMsgCommand(char* args)
+{
+    uint32 questId;
+    if (!ExtractUInt32(&args, questId))
+        return false;
+
+    uint32 reason;
+    if (!ExtractUInt32(&args, reason))
+        return false;
+
+    m_session->GetPlayer()->SendQuestFailed(questId, reason);
+    return true;
+}
+
 bool ChatHandler::HandleDebugSendQuestPartyMsgCommand(char* args)
 {
     uint32 msg;
@@ -1220,5 +1234,20 @@ bool ChatHandler::HandleDebugMoveflags(char* args)
         return false;
 
     PSendSysMessage("Moveflags on target %u", target->m_movementInfo.GetMovementFlags());
+    return true;
+}
+
+bool ChatHandler::HandleDebugSendWorldState(char* args)
+{
+    Player* player = m_session->GetPlayer();
+    uint32 worldState;
+    if (!ExtractUInt32(&args, worldState))
+        return false;
+
+    uint32 value;
+    if (!ExtractUInt32(&args, value))
+        return false;
+
+    player->SendUpdateWorldState(worldState, value);
     return true;
 }

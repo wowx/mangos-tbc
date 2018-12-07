@@ -224,6 +224,7 @@ UPDATE creature_template SET ScriptName='boss_darkweaver_syth' WHERE entry=18472
 UPDATE creature_template SET ScriptName='boss_anzu' WHERE entry=23035;
 INSERT INTO scripted_event_id VALUES
 (14797,'event_spell_summon_raven_god');
+UPDATE creature_template SET ScriptName='npc_anzu_bird_spirit' WHERE entry IN(23134,23135,23136);
 
 /* SHADOW LABYRINTH */
 UPDATE instance_template SET ScriptName='instance_shadow_labyrinth' WHERE map=555;
@@ -258,7 +259,7 @@ UPDATE creature_template SET ScriptName='npc_gallywix' WHERE entry=7288;
 
 /* BLACK TEMPLE */
 UPDATE instance_template SET ScriptName='instance_black_temple' WHERE map=564;
-UPDATE creature_template SET ScriptName='npc_akama_shade' WHERE entry=22990; -- Akama at Shade of Akama
+UPDATE creature_template SET ScriptName='npc_akama_shade' WHERE entry=23191; -- Akama at Shade of Akama
 UPDATE creature_template SET ScriptName='npc_akama_illidan' WHERE entry=23089; -- Akama at Illidan
 UPDATE creature_template SET ScriptName='mob_illidari_council' WHERE entry=23426; -- Illidari Council controller mob
 UPDATE creature_template SET ScriptName='mob_blood_elf_council_voice_trigger' WHERE entry=23499; -- Voice Trigger Mob (Controls Aggro + Enrage yells)
@@ -376,12 +377,15 @@ UPDATE creature_template SET ScriptName='npc_bloodmaul_stout_trigger' WHERE entr
 UPDATE creature_template SET ScriptName='npc_simon_game_bunny' WHERE entry=22923;
 UPDATE creature_template SET ScriptName='npc_light_orb_collector' WHERE entry IN (21926,22333);
 UPDATE creature_template SET ScriptName='npc_bloodmaul_dire_wolf' WHERE entry=20058;
+UPDATE creature_template SET ScriptName='npc_obelisk_trigger' WHERE entry=22422;
 UPDATE creature_template SET ScriptName='npc_vimgol_visual_bunny' WHERE entry=23040;
 UPDATE creature_template SET ScriptName='npc_vimgol_middle_bunny' WHERE entry=23081;
 UPDATE creature_template SET ScriptName='npc_vimgol' WHERE entry=22911;
+UPDATE creature_template SET ScriptName='npc_bird_spirit' WHERE entry=22023;
 UPDATE creature_template SET ScriptName='npc_spirit_prisoner_of_bladespire' WHERE entry IN(22460);
 UPDATE creature_template SET ScriptName='npc_deadsoul_orb' WHERE entry=20845;
 UPDATE creature_template SET ScriptName='npc_evergrove_druid' WHERE entry=22423;
+UPDATE creature_template SET ScriptName='npc_apexis_flayer' WHERE entry=22175;
 INSERT INTO scripted_areatrigger VALUES
 (4613, "mobs_grishna_arrakoa"),
 (4615, "mobs_grishna_arrakoa"),
@@ -391,6 +395,8 @@ UPDATE creature_template SET ScriptName='npc_soulgrinder' WHERE entry=23019;
 UPDATE creature_template SET ScriptName='npc_mogdorg_the_wizened' WHERE entry=22941;
 UPDATE creature_template SET ScriptName='npc_supplicant' WHERE entry IN(23052,23053);
 INSERT INTO scripted_event_id VALUES(14739,'event_into_the_soulgrinder');
+UPDATE creature_template SET ScriptName='npc_warp_gate' WHERE entry IN(22471,22472);
+UPDATE creature_template SET ScriptName='npc_fel_cannon' WHERE entry=22443;
 
 /* BLASTED LANDS */
 UPDATE creature_template SET ScriptName='npc_fallen_hero_of_horde' WHERE entry=7572;
@@ -910,6 +916,8 @@ UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_corlok' WHERE entry
 UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_ichman' WHERE entry=23345;
 UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_mulverick' WHERE entry=23346;
 UPDATE creature_template SET ScriptName='npc_dragonmaw_racer_skyshatter' WHERE entry=23348;
+UPDATE creature_template SET ScriptName='mob_bt_battle_fighter' WHERE entry IN (22857, 22858, 22860, 22861, 22862, 22863, 22864, 22988);
+UPDATE creature_template SET ScriptName='npc_bt_battle_sensor' WHERE entry=22934;
 
 /* SHATTRATH */
 UPDATE creature_template SET ScriptName='npc_dirty_larry' WHERE entry=19720;
@@ -2433,8 +2441,9 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1015027,'$G Him : Her; look too pretty to be da ruler.',0,0,0,0,'Bloodmaul/Bladespire Supplicant LoS text'),
 (-1015028,'Me live to serve.',0,0,0,0,'Bloodmaul/Bladespire Supplicant LoS text'),
 (-1015029,'For the Deceiver! For Kil''jaeden!',0,0,0,0,'Trelopades on aggro 1'),
-(-1015030,'Only flesh and blood...',0,0,0,0,'Trelopades on aggro 2');
-
+(-1015030,'Only flesh and blood...',0,0,0,0,'Trelopades on aggro 2'),
+(-1015031, 'Onward, Scryers!  Show Illidan\'s lackeys the temper of our steel!', 0, 1, 0, 0, 'Onward Scryers'),
+(-1015032, 'Forward, vindicators!  Drive these demons from our sacred temple!', 0, 1, 0, 0, 'Forward vindicators');
 -- -1 020 000 WOTLK texts
 
 -- -1 033 000 SHADOWFANG KEEP
@@ -7445,6 +7454,33 @@ INSERT INTO script_waypoint VALUES
 (22458,0,21,-3728.77,5385.65,-3.704,0,0,0,''),
 (22458,0,22,-3733.33,5389.24,-5.331,0,0,0,''),
 (22458,0,23,-3739.91,5393.69,-4.213,0,0,0,''),
+(22861,0,0,-3567.673,390.162,31.162,0,0,0,''),
+(22861,0,1,-3558.926,410.604,29.328,0,0,0,''),
+(22861,0,2,-3569.454,408.951,29.623,0,0,0,''),
+(22861,0,3,-3552.207,393.217,31.119,0,0,0,''),
+(22861,0,4,-3565.558,398.519,30.333,0,0,0,''),
+(22861,0,5,-3550.822,406.948,30.070,0,0,0,''),
+(22861,0,6,-3573.805,401.071,30.696,0,0,0,''),
+(22861,0,7,-3569.454,408.951,29.623,0,0,0,''),
+(22861,0,8,-3560.967,404.486,29.785,0,0,0,''),
+(22863,0,0,-3567.673,390.162,31.162,0,0,0,''),
+(22863,0,1,-3558.926,410.604,29.328,0,0,0,''),
+(22863,0,2,-3569.454,408.951,29.623,0,0,0,''),
+(22863,0,3,-3552.207,393.217,31.119,0,0,0,''),
+(22863,0,4,-3565.558,398.519,30.333,0,0,0,''),
+(22863,0,5,-3550.822,406.948,30.070,0,0,0,''),
+(22863,0,6,-3573.805,401.071,30.696,0,0,0,''),
+(22863,0,7,-3569.454,408.951,29.623,0,0,0,''),
+(22863,0,8,-3560.967,404.486,29.785,0,0,0,''),
+(22864,0,0,-3567.673,390.162,31.162,0,0,0,''),
+(22864,0,1,-3558.926,410.604,29.328,0,0,0,''),
+(22864,0,2,-3569.454,408.951,29.623,0,0,0,''),
+(22864,0,3,-3552.207,393.217,31.119,0,0,0,''),
+(22864,0,4,-3565.558,398.519,30.333,0,0,0,''),
+(22864,0,5,-3550.822,406.948,30.070,0,0,0,''),
+(22864,0,6,-3573.805,401.071,30.696,0,0,0,''),
+(22864,0,7,-3569.454,408.951,29.623,0,0,0,''),
+(22864,0,8,-3560.967,404.486,29.785,0,0,0,''),
 (22916,0,0,7461.49,-3121.06,438.21,0,7000,0,'SAY_START'),
 (22916,0,1,7465.26,-3115.5,439.315,0,0,0,''),
 (22916,0,2,7470.03,-3109.29,439.333,0,0,0,''),

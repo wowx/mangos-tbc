@@ -149,6 +149,16 @@ void instance_karazhan::OnCreatureCreate(Creature* pCreature)
         case NPC_INFERNAL_RELAY:
             m_vInfernalRelays.push_back(pCreature->GetObjectGuid());
             break;
+        case NPC_TELEPORT_N:
+        case NPC_TELEPORT_S:
+        case NPC_TELEPORT_E:
+        case NPC_TELEPORT_W:
+        case NPC_TELEPORT_NE:
+        case NPC_TELEPORT_SE:
+        case NPC_TELEPORT_SW:
+        case NPC_TELEPORT_NW:
+            m_aranTeleportNPCs.push_back(pCreature->GetObjectGuid());
+            return;
     }
 }
 
@@ -166,6 +176,7 @@ void instance_karazhan::OnObjectCreate(GameObject* pGo)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_SIDE_ENTRANCE_DOOR:
+        case GO_SERVANTS_ACCESS_DOOR:
             if (m_auiEncounter[3] == DONE)
                 pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
             break;
@@ -227,10 +238,15 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
             m_auiEncounter[uiType] = uiData;
             if (uiData == IN_PROGRESS)
                 m_uiOzDeathCount = 0;
+            if (uiData == FAIL)
+            {
+                DoUseDoorOrButton(GO_STAGE_DOOR_LEFT);
+            }
             if (uiData == DONE)
             {
                 DoUseDoorOrButton(GO_STAGE_DOOR_LEFT);
                 DoUseDoorOrButton(GO_STAGE_DOOR_RIGHT);
+                DoToggleGameObjectFlags(GO_SERVANTS_ACCESS_DOOR, GO_FLAG_LOCKED, false);
                 DoToggleGameObjectFlags(GO_SIDE_ENTRANCE_DOOR, GO_FLAG_LOCKED, false);
             }
             // use curtain only for event start or fail

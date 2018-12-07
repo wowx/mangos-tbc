@@ -209,7 +209,12 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
             if (flags == TRIGGERED_NONE)
                 flags |= TRIGGERED_NORMAL_COMBAT_CAST;
 
-            caster->CastSpell(target, spellInfo, flags, nullptr, nullptr, originalCasterGUID);
+            SpellCastResult result = caster->CastSpell(target, spellInfo, flags, nullptr, nullptr, originalCasterGUID);
+            if (result != SPELL_CAST_OK)
+            {
+                sLog.outError("DoCastSpellIfCan by %s attempt to cast spell %u but spell failed due to unknown result %u.", m_unit->GetObjectGuid().GetString().c_str(), spellId, result);
+                return CAST_FAIL_OTHER;
+            }
             return CAST_OK;
         }
         sLog.outErrorDb("DoCastSpellIfCan by %s attempt to cast spell %u but spell does not exist.", m_unit->GetGuidStr().c_str(), spellId);
@@ -292,6 +297,8 @@ void UnitAI::OnSpellCastStateChange(SpellEntry const* spellInfo, bool state, Wor
     // Targeting seems to be directly affected by eff index 0 targets, client does the same thing
     switch (spellInfo->EffectImplicitTargetA[EFFECT_INDEX_0])
     {
+        case TARGET_ENUM_UNITS_ENEMY_IN_CONE_24: // ignores everything and keeps turning
+            return;
         case TARGET_UNIT_ENEMY: forceTarget = true; break;
         case TARGET_UNIT_SCRIPT_NEAR_CASTER:
         default: break;
