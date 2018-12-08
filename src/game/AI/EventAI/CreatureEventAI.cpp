@@ -183,6 +183,7 @@ void CreatureEventAI::InitAI()
                                 m_mainSpellId = i.action[actionIdx].cast.spellId;
                                 SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(m_mainSpellId);
                                 m_mainSpellCost = Spell::CalculatePowerCost(spellInfo, m_creature, nullptr, nullptr);
+                                m_mainSpellMinRange = GetSpellMinRange(sSpellRangeStore.LookupEntry(spellInfo->rangeIndex));
                                 m_mainSpells.insert(i.action[actionIdx].cast.spellId);
                             }
 
@@ -277,6 +278,7 @@ bool CreatureEventAI::IsTimerBasedEvent(EventAI_Type type) const
         case EVENT_T_ENERGY:
         case EVENT_T_SELECT_ATTACKING_TARGET:
         case EVENT_T_FACING_TARGET:
+        case EVENT_T_SPELLHIT_TARGET:
             return true;
         default: return false;
     }
@@ -374,6 +376,7 @@ bool CreatureEventAI::CheckEvent(CreatureEventAIHolder& holder, Unit* actionInvo
         case EVENT_T_EVADE:
             break;
         case EVENT_T_SPELLHIT:
+        case EVENT_T_SPELLHIT_TARGET:
             break;
         case EVENT_T_RANGE:
             if (!m_creature->isInCombat() || !m_creature->getVictim() || !m_creature->IsInMap(m_creature->getVictim()))
@@ -816,6 +819,7 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                         {
                             case CAST_FAIL_COOLDOWN:
                             case CAST_FAIL_POWER:
+                            case CAST_FAIL_TOO_CLOSE:
                                 SetCurrentRangedMode(false);
                                 break;
                             case CAST_OK:
@@ -1661,6 +1665,19 @@ void CreatureEventAI::SpellHit(Unit* unit, const SpellEntry* spellInfo)
     ProcessEvents(unit);
 }
 
+void CreatureEventAI::SpellHitTarget(Unit* target, const SpellEntry* spellInfo)
+{
+    IncreaseDepthIfNecessary();
+    for (auto& i : m_CreatureEventAIList)
+        if (i.event.event_type == EVENT_T_SPELLHIT_TARGET)
+            // If spell id matches (or no spell id) & if spell school matches (or no spell school)
+            if (!i.event.spell_hit_target.spellId || spellInfo->Id == i.event.spell_hit_target.spellId)
+                if (spellInfo->SchoolMask & i.event.spell_hit_target.schoolMask)
+                    CheckAndReadyEventForExecution(i, target);
+
+    ProcessEvents(target);
+}
+
 void CreatureEventAI::UpdateAI(const uint32 diff)
 {
     // Check if we are in combat (also updates calls threat update code)
@@ -2050,7 +2067,8 @@ void CreatureEventAI::DistanceYourself()
         SetCurrentRangedMode(true);
 
     float x, y, z;
-    victim->GetNearPoint(m_creature, x, y, z, m_creature->GetObjectBoundingRadius(), DISTANCING_CONSTANT + m_creature->GetCombinedCombatReach(victim) * 1.5f, victim->GetAngle(m_creature));
+    float distance = DISTANCING_CONSTANT + std::max(m_creature->GetCombinedCombatReach(victim) * 1.5f, m_creature->GetCombinedCombatReach(victim) + m_mainSpellMinRange);
+    victim->GetNearPoint(m_creature, x, y, z, m_creature->GetObjectBoundingRadius(), distance, victim->GetAngle(m_creature));
     m_creature->GetMotionMaster()->MovePoint(POINT_MOVE_DISTANCE, x, y, z);
 }
 
