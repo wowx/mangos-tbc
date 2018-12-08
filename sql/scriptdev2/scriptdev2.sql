@@ -469,9 +469,14 @@ UPDATE creature_template SET ScriptName='mob_steamrigger_mechanic' WHERE entry=1
 
 /* SERPENTSHRINE CAVERN */
 UPDATE instance_template SET ScriptName='instance_serpent_shrine' WHERE map=548;
+UPDATE gameobject_template SET ScriptName='go_ssc_boss_consoles' WHERE entry IN(185117,185118,185115,185114,185116);
+UPDATE creature_template SET ScriptName='npc_serpentshrine_parasite' WHERE entry=22379;
+/* Hydross the Unstable event */
 UPDATE creature_template SET ScriptName='boss_hydross_the_unstable' WHERE entry=21216;
+UPDATE creature_template SET ScriptName='npc_spawn_of_hydross' WHERE entry IN(22035,22036);
 /* Leotheras the Blind event */
 UPDATE creature_template SET ScriptName='boss_leotheras_the_blind' WHERE entry=21215;
+UPDATE creature_template SET ScriptName='npc_inner_demon' WHERE entry=21857;
 /* Fathom-lord Karathress event */
 UPDATE creature_template SET ScriptName='boss_fathomlord_karathress' WHERE entry=21214;
 UPDATE creature_template SET ScriptName='boss_fathomguard_sharkkis' WHERE entry=21966;
@@ -485,6 +490,7 @@ UPDATE creature_template SET ScriptName='boss_lady_vashj' WHERE entry=21212;
 UPDATE creature_template SET ScriptName='mob_enchanted_elemental' WHERE entry=21958;
 UPDATE gameobject_template SET ScriptName='go_shield_generator' WHERE entry IN (185051,185052,185053,185054);
 UPDATE item_template SET ScriptName='item_tainted_core' WHERE entry=31088;
+UPDATE gameobject_template SET ScriptName='go_vashj_bridge' WHERE entry IN(184568);
 /* The Lurker Below event */
 UPDATE gameobject_template SET ScriptName='go_strange_pool' WHERE entry=184956;
 UPDATE creature_template SET ScriptName='boss_the_lurker_below' WHERE entry=21217;
@@ -797,6 +803,7 @@ INSERT INTO scripted_areatrigger VALUES
 (4497,'at_commander_dawnforge');
 UPDATE gameobject_template SET ScriptName='go_manaforge_control_console' WHERE entry IN (183770,183956,184311,184312);
 UPDATE creature_template SET ScriptName='npc_manaforge_control_console' WHERE entry IN (20209,20417,20418,20440);
+UPDATE `creature_template` SET `ScriptName`='npc_manaforge_spawn' WHERE `Entry` IN(20218,20438,20439,20460);
 UPDATE creature_template SET ScriptName='npc_commander_dawnforge' WHERE entry=19831;
 UPDATE creature_template SET ScriptName='npc_bessy' WHERE entry=20415;
 UPDATE creature_template SET ScriptName='npc_maxx_a_million' WHERE entry=19589;
@@ -1693,9 +1700,9 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 
 (-1000472,'The %s, having fought the good fight, falls to pieces.',0,2,0,0,'Scrap Reaver X6000 - on death anim emote'),
 (-1000473,'The %s''s mechanical heart begins to beat softly.',0,2,0,0,'Scrapped Fel Reaver - on event start emote'),
-(-1000474,'REUSE_ME',0,0,0,0,'REUSE_ME'),
-(-1000475,'REUSE_ME',0,0,0,0,'REUSE_ME'),
-(-1000476,'REUSE_ME',0,0,0,0,'REUSE_ME'),
+(-1000474,'The naaru''s emergency shutdown will disable the manaforge permanently! It must be aborted!',0,0,0,0,'manaforge shutdown'),
+(-1000475,'Stop this immediately!',0,0,0,0,'manaforge shutdown say 2'),
+(-1000476,'You will not shut my manaforge down, scum!',0,1,0,0,'manaforge ara elite yell'),
 
 (-1000477,'Let us leave this place. I\'ve had enough of these madmen!',0,0,0,0,'akuno SAY_AKU_START'),
 (-1000478,'You\'ll go nowhere, fool!',0,0,0,0,'akuno SAY_AKU_AMBUSH_A'),
@@ -3706,7 +3713,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1548040,'The violent earthquake has alerted nearby Murlocs!',0,3,0,0,'morogrim EMOTE_EARTHQUAKE'),
 (-1548041,'%s summons watery globules!',0,3,0,0,'morogrim EMOTE_WATERY_GLOBULES'),
 
-(-1548042,'Water is life. It has become a rare commodity here in Outland. A commodity that we alone shall control. We are the Highborne, and the time has come at last for us to retake our rightful place in the world!',11531,1,0,0,'vashj SAY_INTRO'),
+(-1548042,'Water is life. It has become a rare commodity here in Outland. A commodity that we alone shall control. We are the Highborne, and the time has come at last for us to retake our rightful place in the world!',11531,6,0,0,'vashj SAY_INTRO'),
 (-1548043,'I\'ll split you from stem to stern!',11532,1,0,0,'vashj SAY_AGGRO1'),
 (-1548044,'Victory to Lord Illidan!',11533,1,0,0,'vashj SAY_AGGRO2'),
 (-1548045,'I spit on you, surface filth!',11534,1,0,0,'vashj SAY_AGGRO3'),
@@ -3743,14 +3750,14 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1550014,'Enough of this!  Now I call upon the fury of the cosmos itself.',0,1,0,0,'solarian SAY_VOIDA'),
 (-1550015,'I become ONE... with the VOID!',0,1,0,0,'solarian SAY_VOIDB'),
 
-(-1550016,'Energy. Power. My people are addicted to it... a dependence made manifest after the Sunwell was destroyed. Welcome... to the future. A pity you are too late to stop it. No one can stop me now! Selama ashal\'anore!',11256,1,0,0,'kaelthas SAY_INTRO'),
+(-1550016,'Energy. Power. My people are addicted to it... a dependence made manifest after the Sunwell was destroyed. Welcome... to the future. A pity you are too late to stop it. No one can stop me now! Selama ashal''anore!',11256,1,0,0,'kaelthas SAY_INTRO note: was changed sometime after TBC'),
 (-1550017,'Capernian will see to it that your stay here is a short one.',11257,1,0,0,'kaelthas SAY_INTRO_CAPERNIAN'),
 (-1550018,'Well done, you have proven worthy to test your skills against my master engineer, Telonicus.',11258,1,0,0,'kaelthas SAY_INTRO_TELONICUS'),
-(-1550019,'Let us see how your nerves hold up against the Darkener, Thaladred.',11259,1,0,0,'kaelthas SAY_INTRO_THALADRED'),
+(-1550019,'Let us see how your nerves hold up against the Darkener, Thaladred!',11259,1,0,0,'kaelthas SAY_INTRO_THALADRED'),
 (-1550020,'You have persevered against some of my best advisors... but none can withstand the might of the Blood Hammer. Behold, Lord Sanguinar!',11260,1,0,0,'kaelthas SAY_INTRO_SANGUINAR'),
-(-1550021,'As you see, I have many weapons in my arsenal...',11261,1,0,0,'kaelthas SAY_PHASE2_WEAPON'),
-(-1550022,'Perhaps I underestimated you. It would be unfair to make you fight all four advisors at once, but... fair treatment was never shown to my people. I\'m just returning the favor.',11262,1,0,0,'kaelthas SAY_PHASE3_ADVANCE'),
-(-1550023,'Alas, sometimes one must take matters into one\'s own hands. Balamore shanal!',11263,1,0,0,'kaelthas SAY_PHASE4_INTRO2'),
+(-1550021,'As you see, I have many weapons in my arsenal....',11261,1,0,0,'kaelthas SAY_PHASE2_WEAPON'),
+(-1550022,'Perhaps I underestimated you. It would be unfair to make you fight all four advisors at once, but... fair treatment was never shown to my people. I''m just returning the favor.',11262,1,0,0,'kaelthas SAY_PHASE3_ADVANCE'),
+(-1550023,'Alas, sometimes one must take matters into one''s own hands. Balamore shanal!',11263,1,0,0,'kaelthas SAY_PHASE4_INTRO2'),
 (-1550024,'I have not come this far to be stopped! The future I have planned will not be jeopardized! Now you will taste true power!!',11273,1,0,0,'kaelthas SAY_PHASE5_NUTS'),
 (-1550025,'You will not prevail.',11270,1,0,0,'kaelthas SAY_SLAY1'),
 (-1550026,'You gambled...and lost.',11271,1,0,0,'kaelthas SAY_SLAY2'),
@@ -3759,22 +3766,22 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1550029,'Bow to my will.',11269,1,0,0,'kaelthas SAY_MINDCONTROL2'),
 (-1550030,'Let us see how you fare when your world is turned upside down.',11264,1,0,0,'kaelthas SAY_GRAVITYLAPSE1'),
 (-1550031,'Having trouble staying grounded?',11265,1,0,0,'kaelthas SAY_GRAVITYLAPSE2'),
-(-1550032,'Anara\'nel belore!',11267,1,0,0,'kaelthas SAY_SUMMON_PHOENIX1'),
+(-1550032,'Anar''anel belore!',11267,1,0,0,'kaelthas SAY_SUMMON_PHOENIX1'),
 (-1550033,'By the power of the sun!',11266,1,0,0,'kaelthas SAY_SUMMON_PHOENIX2'),
-(-1550034,'For...Quel...thalas!',11274,1,0,0,'kaelthas SAY_DEATH'),
+(-1550034,'For... Quel''...Thalas!',11274,1,0,0,'kaelthas SAY_DEATH'),
 
 (-1550035,'Prepare yourselves!',11203,1,0,0,'thaladred SAY_THALADRED_AGGRO'),
 (-1550036,'Forgive me, my prince! I have... failed.',11204,1,0,0,'thaladred SAY_THALADRED_DEATH'),
-(-1550037,'%s sets his gaze on $N!',0,2,0,0,'thaladred EMOTE_THALADRED_GAZE'),
+(-1550037,'%s sets eyes on $n!',0,2,0,0,'thaladred EMOTE_THALADRED_GAZE'),
 
 (-1550038,'Blood for blood!',11152,1,0,0,'sanguinar SAY_SANGUINAR_AGGRO'),
-(-1550039,'NO! I ...will... not...',11153,1,0,0,'sanguinar SAY_SANGUINAR_DEATH'),
+(-1550039,'NO! I... will... not...',11153,1,0,0,'sanguinar SAY_SANGUINAR_DEATH'),
 
-(-1550040,'The sin\'dore reign supreme!',11117,1,0,0,'capernian SAY_CAPERNIAN_AGGRO'),
+(-1550040,'The sin''dorei reign supreme!',11117,1,0,0,'capernian SAY_CAPERNIAN_AGGRO'),
 (-1550041,'This is not over!',11118,1,0,0,'capernian SAY_CAPERNIAN_DEATH'),
 
-(-1550042,'Anar\'alah belore!',11157,1,0,0,'telonicus SAY_TELONICUS_AGGRO'),
-(-1550043,'More perils... await',11158,1,0,0,'telonicus SAY_TELONICUS_DEATH'),
+(-1550042,'Anar''alah belore!',11157,1,0,0,'telonicus SAY_TELONICUS_AGGRO'),
+(-1550043,'More perils... await...',11158,1,0,0,'telonicus SAY_TELONICUS_DEATH'),
 
 (-1550044,'%s begins to cast Pyroblast!',0,3,0,0,'kaelthas EMOTE_PYROBLAST');
 
