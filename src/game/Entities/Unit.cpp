@@ -5627,19 +5627,49 @@ void Unit::RemoveAllGameObjects()
 
 void Unit::SendSpellNonMeleeDamageLog(SpellNonMeleeDamage* log) const
 {
-    WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (16 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1)); // we guess size
+    WorldPacket data(SMSG_SPELLNONMELEEDAMAGELOG, (8 + 8 + 4 + 4 + 1 + 4 + 4 + 1 + 1 + 4 + 4 + 1));
     data << log->target->GetPackGUID();
     data << log->attacker->GetPackGUID();
     data << uint32(log->SpellID);
     data << uint32(log->damage);                            // damage amount
     data << uint8(log->schoolMask);                         // damage school
     data << uint32(log->absorb);                            // AbsorbedDamage
-    data << uint32(log->resist);                            // resist
+    data << int32(log->resist);                             // resist
     data << uint8(log->periodicLog);                        // if 1, then client show spell name (example: %s's ranged shot hit %s for %u school or %s suffers %u school damage from %s's spell_name
     data << uint8(log->unused);                             // unused
     data << uint32(log->blocked);                           // blocked
     data << uint32(log->HitInfo);
-    data << uint8(0);                                       // flag to use extend data
+
+    // Debug mode bool switch (extended data):
+    if (!(log->HitInfo & (SPELL_HIT_TYPE_CRIT_DEBUG | SPELL_HIT_TYPE_HIT_DEBUG | SPELL_HIT_TYPE_ATTACK_TABLE_DEBUG)))
+        data << uint8(0);
+    else
+    {
+        data << uint8(1);
+
+        if (log->HitInfo & SPELL_HIT_TYPE_CRIT_DEBUG)
+        {
+            data << float(0); // roll
+            data << float(0); // needed
+        }
+
+        if (log->HitInfo & SPELL_HIT_TYPE_HIT_DEBUG)
+        {
+            data << float(0); // roll
+            data << float(0); // needed
+        }
+
+        if (log->HitInfo & SPELL_HIT_TYPE_ATTACK_TABLE_DEBUG)
+        {
+            data << float(0); // miss chance
+            data << float(0); // dodge chance
+            data << float(0); // parry chance
+            data << float(0); // block chance
+            data << float(0); // glance chance
+            data << float(0); // crush chance
+        }
+    }
+
     SendMessageToSet(data, true);
 }
 
@@ -6720,8 +6750,7 @@ Unit* Unit::SelectMagnetTarget(Unit* victim, Spell* spell, SpellEffectIndex eff)
 
 void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool critical)
 {
-    // we guess size
-    WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1));
+    WorldPacket data(SMSG_SPELLHEALLOG, (8 + 8 + 4 + 4 + 1 + 1));
     data << pVictim->GetPackGUID();
     data << GetPackGUID();
     data << uint32(SpellID);
@@ -6733,12 +6762,23 @@ void Unit::SendHealSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, bool c
 
 void Unit::SendEnergizeSpellLog(Unit* pVictim, uint32 SpellID, uint32 Damage, Powers powertype) const
 {
-    WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4 + 1));
+    WorldPacket data(SMSG_SPELLENERGIZELOG, (8 + 8 + 4 + 4 + 4));
     data << pVictim->GetPackGUID();
     data << GetPackGUID();
     data << uint32(SpellID);
     data << uint32(powertype);
     data << uint32(Damage);
+    SendMessageToSet(data, true);
+}
+
+void Unit::SendEnvironmentalDamageLog(uint8 type, uint32 damage, uint32 absorb, int32 resist) const
+{
+    WorldPacket data(SMSG_ENVIRONMENTALDAMAGELOG, (8 + 1 + 4 + 4 + 4));
+    data << GetObjectGuid();
+    data << uint8(type != DAMAGE_FALL_TO_VOID ? type : DAMAGE_FALL);
+    data << uint32(damage);
+    data << uint32(absorb);
+    data << int32(resist);
     SendMessageToSet(data, true);
 }
 
@@ -8742,6 +8782,12 @@ bool Unit::SelectHostileTarget()
 
     if (target)
     {
+        if (IsLeashingTarget(target))
+        {
+            AI()->EnterEvadeMode();
+            return false;
+        }
+
         // needs a much better check, seems to cause quite a bit of trouble
         SetInFront(target);
 
@@ -9079,6 +9125,13 @@ bool Unit::IsOfflineTarget(Unit* victim) const
     if (!victim->isInAccessablePlaceFor(this))
         return true;
 
+    return false;
+}
+
+bool Unit::IsLeashingTarget(Unit* victim) const
+{
+    float AttackDist = GetAttackDistance(victim);
+    float ThreatRadius = sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS);
     float x, y, z, ori;
     if (GetTypeId() == TYPEID_UNIT)
         static_cast<Creature const*>(this)->GetCombatStartPosition(x, y, z, ori);
@@ -9087,7 +9140,7 @@ bool Unit::IsOfflineTarget(Unit* victim) const
 
     // Use AttackDistance in distance check if threat radius is lower. This prevents creature bounce in and out of combat every update tick.
     // TODO: Implement proper leashing
-    return !victim->IsWithinDist3d(x, y, z, 40.f);
+    return !victim->IsWithinDist3d(x, y, z, ThreatRadius > AttackDist ? ThreatRadius : AttackDist);
 }
 
 uint32 Unit::GetCreatureType() const
