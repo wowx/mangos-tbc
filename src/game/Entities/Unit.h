@@ -2095,15 +2095,23 @@ class Unit : public WorldObject
         virtual void UpdateAttackPowerAndDamage(bool ranged = false) = 0;
         virtual void UpdateDamagePhysical(WeaponAttackType attType) = 0;
         float GetTotalAttackPowerValue(WeaponAttackType attType) const;
-        float GetWeaponDamageRange(WeaponAttackType attType, WeaponDamageRange damageRange, uint8 index = 0) const;
-        SpellSchools GetWeaponDamageSchool(WeaponAttackType attType, uint8 index = 0) const { return m_weaponDamage[attType][index].school; }
-        void SetBaseWeaponDamage(WeaponAttackType attType, WeaponDamageRange damageRange, float value, uint8 index = 0) { m_weaponDamage[attType][index].damage[damageRange] = value; }
-        void SetWeaponDamageSchool(WeaponAttackType attType, SpellSchools school, uint8 index = 0) { m_weaponDamage[attType][index].school = school; }
 
-        SpellSchoolMask GetMeleeDamageSchoolMask(bool main, bool first = false) const;
-        SpellSchoolMask GetMeleeDamageSchoolMask() const { return SpellSchoolMask(GetMeleeDamageSchoolMask(true, true) | GetMeleeDamageSchoolMask(false, true)); }
-        void SetMeleeDamageSchool(bool main, SpellSchools school);
-        void SetMeleeDamageSchool(SpellSchools school) { SetMeleeDamageSchool(true, school); SetMeleeDamageSchool(false, school); }
+        float GetBaseWeaponDamage(WeaponAttackType attType, WeaponDamageRange damageRange, uint8 index = 0) const;
+        void SetBaseWeaponDamage(WeaponAttackType attType, WeaponDamageRange damageRange, float value, uint8 index = 0) { m_weaponDamageInfo.weapon[attType].damage[index].value[damageRange] = value; }
+
+        SpellSchools GetWeaponDamageSchool(WeaponAttackType attType, uint8 index = 0) const { return m_weaponDamageInfo.weapon[attType].damage[index].school; }
+        void SetWeaponDamageSchool(WeaponAttackType attType, SpellSchools school, uint8 index = 0) { m_weaponDamageInfo.weapon[attType].damage[index].school = school; }
+
+        SpellSchoolMask GetAttackDamageSchoolMask(WeaponAttackType attType, bool first = false) const;
+        void SetAttackDamageSchool(WeaponAttackType attType, SpellSchools school);
+
+        inline SpellSchoolMask GetRangedDamageSchoolMask(bool first = false) const { return GetAttackDamageSchoolMask(RANGED_ATTACK, first); }
+        inline void SetRangedDamageSchool(SpellSchools school) { SetAttackDamageSchool(RANGED_ATTACK, school); }
+
+        inline SpellSchoolMask GetMeleeDamageSchoolMask(bool main, bool first = false) const { return GetAttackDamageSchoolMask((main ? BASE_ATTACK : OFF_ATTACK), first); }
+        inline SpellSchoolMask GetMeleeDamageSchoolMask() const { return SpellSchoolMask(GetMeleeDamageSchoolMask(true, true) | GetMeleeDamageSchoolMask(false, true)); }
+        inline void SetMeleeDamageSchool(bool main, SpellSchools school) { SetAttackDamageSchool((main ? BASE_ATTACK : OFF_ATTACK), school); }
+        inline void SetMeleeDamageSchool(SpellSchools school) { SetMeleeDamageSchool(true, school); SetMeleeDamageSchool(false, school); }
 
         // Visibility system
         UnitVisibility GetVisibility() const { return m_Visibility; }
@@ -2422,6 +2430,24 @@ class Unit : public WorldObject
         void ResetAuraUpdateMask() { m_auraUpdateMask = 0; }
 
     protected:
+
+        struct WeaponDamageInfo
+        {
+            struct Weapon
+            {
+                struct Damage
+                {
+                    SpellSchools school = SPELL_SCHOOL_NORMAL;
+                    float value[2] = { BASE_MINDAMAGE, BASE_MAXDAMAGE };
+                };
+
+                uint32 lines = 1;
+                Damage damage[MAX_ITEM_PROTO_DAMAGES];
+            };
+
+            Weapon weapon[MAX_ATTACK];
+        };
+
         explicit Unit();
 
         void _UpdateSpells(uint32 time);
@@ -2457,8 +2483,7 @@ class Unit : public WorldObject
         AuraList m_modAuras[TOTAL_AURAS];
         float m_auraModifiersGroup[UNIT_MOD_END][MODIFIER_TYPE_END];
 
-        WeaponDamageInfo m_weaponDamage[MAX_ATTACK][MAX_ITEM_PROTO_DAMAGES];
-        uint8 m_weaponDamageCount[MAX_ATTACK];
+        WeaponDamageInfo m_weaponDamageInfo;
 
         bool m_canModifyStats;
         // std::list< spellEffectPair > AuraSpells[TOTAL_AURAS];  // TODO: use this if ok for mem
