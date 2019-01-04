@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify
@@ -3076,7 +3076,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool dependen
     else
     {
         // not ranked skills
-        SkillLineAbilityMapBounds skill_bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spell_id);
+        SkillLineAbilityMapBounds skill_bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spell_id);
 
         for (SkillLineAbilityMap::const_iterator _spell_idx = skill_bounds.first; _spell_idx != skill_bounds.second; ++_spell_idx)
         {
@@ -3289,7 +3289,7 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank, bo
     else
     {
         // not ranked skills
-        SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spell_id);
+        SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spell_id);
 
         for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
         {
@@ -5172,7 +5172,7 @@ bool Player::UpdateCraftSkill(uint32 spellid)
 {
     DEBUG_LOG("UpdateCraftSkill spellid %d", spellid);
 
-    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spellid);
+    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spellid);
 
     for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
     {
@@ -5466,7 +5466,9 @@ void Player::SetSkill(uint16 id, uint16 currVal, uint16 maxVal, uint16 step /*=0
             SetUInt32Value(PLAYER_SKILL_VALUE_INDEX(skillStatus.pos), MAKE_SKILL_VALUE(currVal, maxVal));
             if (skillStatus.uState != SKILL_NEW)
                 skillStatus.uState = SKILL_CHANGED;
-            // learnSkillRewardedSpells(id, currVal);       // pre-3.x have only 1 skill level req (so at learning only)
+
+            // Learn all spells auto-trained by this skill on change
+            UpdateSkillSpellsTraining(id, currVal);
         }
         else                                                // remove
         {
@@ -5481,11 +5483,8 @@ void Player::SetSkill(uint16 id, uint16 currVal, uint16 maxVal, uint16 step /*=0
             else
                 mSkillStatus.erase(itr);
 
-            // remove all spells that related to this skill
-            for (uint32 j = 0; j < sSkillLineAbilityStore.GetNumRows(); ++j)
-                if (SkillLineAbilityEntry const* pAbility = sSkillLineAbilityStore.LookupEntry(j))
-                    if (pAbility->skillId == id)
-                        removeSpell(sSpellMgr.GetFirstSpellInChain(pAbility->spellId));
+            // Remove all spells dependent on this skill unconditionally
+            UpdateSkillSpellsTraining(id, 0);
         }
     }
     else if (currVal)                                       // add
@@ -5528,8 +5527,8 @@ void Player::SetSkill(uint16 id, uint16 currVal, uint16 maxVal, uint16 step /*=0
                     if (j->GetModifier()->m_miscvalue == int32(id))
                         j->ApplyModifier(true);
 
-                // Learn all spells for skill
-                learnSkillRewardedSpells(id, currVal);
+                // Learn all spells auto-trained by this skill
+                UpdateSkillSpellsTraining(id, currVal);
                 return;
             }
         }
@@ -5603,6 +5602,48 @@ int16 Player::GetSkillBonus(uint16 id, bool permanent/*= false*/) const
     uint32 bonus = GetUInt32Value(PLAYER_SKILL_BONUS_INDEX(skillStatus.pos));
 
     return (permanent ? SKILL_PERM_BONUS(bonus) : SKILL_TEMP_BONUS(bonus));
+}
+
+void Player::UpdateSkillSpellsTraining(uint16 id, uint16 currVal)
+{
+    uint32 raceMask  = getRaceMask();
+    uint32 classMask = getClassMask();
+
+    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySkillId(id);
+
+    for (auto itr = bounds.first; itr != bounds.second; ++itr)
+    {
+        if (SkillLineAbilityEntry const* pAbility = itr->second)
+        {
+            // Update training: skill removal mode, wipe all dependent spells regardless of training method
+            if (!currVal)
+            {
+                removeSpell(pAbility->spellId);
+                continue;
+            }
+
+            // Check if auto-training method is set, skip if not
+            if (!pAbility->learnOnGetSkill)
+                continue;
+
+            // Check race if set
+            if (pAbility->racemask && !(pAbility->racemask & raceMask))
+                continue;
+
+            // Check class if set
+            if (pAbility->classmask && !(pAbility->classmask & classMask))
+                continue;
+
+            // Update training: needs unlearning spell if current value is too low
+            if (currVal < pAbility->req_skill_value)
+                removeSpell(pAbility->spellId);
+            // Update training: needs learning
+            else if (!IsInWorld())
+                addSpell(pAbility->spellId, true, true, true, false);
+            else
+                learnSpell(pAbility->spellId, true);
+        }
+    }
 }
 
 void Player::SendInitialActionButtons() const
@@ -19091,36 +19132,6 @@ void Player::learnQuestRewardedSpells()
     }
 }
 
-void Player::learnSkillRewardedSpells(uint16 skillId, uint16 value)
-{
-    uint32 raceMask  = getRaceMask();
-    uint32 classMask = getClassMask();
-    for (uint32 j = 0; j < sSkillLineAbilityStore.GetNumRows(); ++j)
-    {
-        SkillLineAbilityEntry const* pAbility = sSkillLineAbilityStore.LookupEntry(j);
-        if (!pAbility || pAbility->skillId != skillId || pAbility->learnOnGetSkill != ABILITY_LEARNED_ON_GET_PROFESSION_SKILL)
-            continue;
-        // Check race if set
-        if (pAbility->racemask && !(pAbility->racemask & raceMask))
-            continue;
-        // Check class if set
-        if (pAbility->classmask && !(pAbility->classmask & classMask))
-            continue;
-
-        if (sSpellTemplate.LookupEntry<SpellEntry>(pAbility->spellId))
-        {
-            // need unlearn spell
-            if (value < pAbility->req_skill_value)
-                removeSpell(pAbility->spellId);
-            // need learn
-            else if (!IsInWorld())
-                addSpell(pAbility->spellId, true, true, true, false);
-            else
-                learnSpell(pAbility->spellId, true);
-        }
-    }
-}
-
 void Player::SendAuraDurationsForTarget(Unit* target)
 {
     SpellAuraHolderMap const& auraHolders = target->GetSpellAuraHolderMap();
@@ -19282,7 +19293,7 @@ bool Player::IsSpellFitByClassAndRace(uint32 spell_id, uint32* pReqlevel /*= nul
     uint32 racemask  = getRaceMask();
     uint32 classmask = getClassMask();
 
-    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(spell_id);
+    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySpellId(spell_id);
     if (bounds.first == bounds.second)
         return true;
 
@@ -20349,7 +20360,7 @@ void Player::_LoadSkills(QueryResult* result)
 
             mSkillStatus.insert(SkillStatusMap::value_type(skill, SkillStatusData(count, SKILL_UNCHANGED)));
 
-            learnSkillRewardedSpells(skill, value);
+            UpdateSkillSpellsTraining(skill, value);
 
             ++count;
 
