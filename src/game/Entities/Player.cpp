@@ -5505,7 +5505,7 @@ void Player::SetSkillStep(uint16 id, uint16 step)
             }
         }
 
-        if (max)
+        if (max && GetSkillMaxPure(id) < max)
         {
             // Note: Some SkillTiers entries contain 0 as starting value for first step, needs investigation (sanitized for now)
             const uint16 value = std::max(uint16(1), uint16(maxed ? max : (GetSkillValuePure(id) + val)));
@@ -14870,6 +14870,13 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
         m_deathState = DEAD;
 
+    // train spells by loaded skills
+    for (auto itr = mSkillStatus.begin(); itr != mSkillStatus.end(); ++itr)
+    {
+        if (itr->second.uState != SKILL_DELETED)
+            UpdateSkillTrainedSpells(uint16(itr->first), SKILL_VALUE(GetUInt32Value(PLAYER_SKILL_VALUE_INDEX(itr->second.pos))));
+    }
+
     _LoadSpells(holder->GetResult(PLAYER_LOGIN_QUERY_LOADSPELLS));
 
     // after spell load
@@ -20551,8 +20558,6 @@ void Player::_LoadSkills(QueryResult* result)
             SetUInt32Value(PLAYER_SKILL_BONUS_INDEX(count), 0);
 
             mSkillStatus.insert(SkillStatusMap::value_type(skill, SkillStatusData(count, SKILL_UNCHANGED)));
-
-            UpdateSkillTrainedSpells(skill, value);
 
             ++count;
 
