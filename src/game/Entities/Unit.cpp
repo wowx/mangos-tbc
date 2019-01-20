@@ -2457,7 +2457,7 @@ void Unit::CalculateAbsorbResistBlock(Unit* pCaster, SpellNonMeleeDamage* damage
         damageInfo->damage -= damageInfo->blocked;
     }
 
-    CalculateDamageAbsorbAndResist(pCaster, GetSpellSchoolMask(spellProto), SPELL_DIRECT_DAMAGE, damageInfo->damage, &damageInfo->absorb, &damageInfo->resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), IsBinarySpell(spellProto));
+    CalculateDamageAbsorbAndResist(pCaster, GetSpellSchoolMask(spellProto), SPELL_DIRECT_DAMAGE, damageInfo->damage, &damageInfo->absorb, &damageInfo->resist, IsReflectableSpell(spellProto), IsResistableSpell(spellProto), IsBinarySpell(*spellProto));
     damageInfo->damage -= damageInfo->absorb + damageInfo->resist;
 }
 
@@ -2799,6 +2799,9 @@ SpellMissInfo Unit::SpellHitResult(Unit* pVictim, SpellEntry const* spell, uint8
         // TODO: improve for partial application
         // Check for immune
         if (!wand && pVictim->IsImmuneToSpell(spell, (this == pVictim), effectMask))
+            return SPELL_MISS_IMMUNE;
+        // Check for immune to damage as hit result if spell hit composed entirely out of damage effects
+        if (IsSpellEffectsDamage(*spell, effectMask) && pVictim->IsImmuneToDamage(schoolMask))
             return SPELL_MISS_IMMUNE;
     }
     switch (spell->DmgClass)
@@ -3931,7 +3934,7 @@ float Unit::CalculateSpellResistChance(const Unit* victim, SpellSchoolMask schoo
     // Chance to fully resist a spell by magic resistance
     if (IsResistableSpell(spell) && spell->DmgClass == SPELL_DAMAGE_CLASS_MAGIC)
     {
-        const bool binary = IsBinarySpell(spell);
+        const bool binary = IsBinarySpell(*spell);
         const float percent = victim->CalculateEffectiveMagicResistancePercent(this, schoolMask, binary);
         if (binary)
             chance += percent;
