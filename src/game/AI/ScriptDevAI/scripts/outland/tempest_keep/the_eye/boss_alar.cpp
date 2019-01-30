@@ -56,7 +56,7 @@ enum
     NPC_FLAME_PATCH         = 20602,
     SPELL_FLAME_PATCH       = 35380,
 
-    MAX_PLATFORMS           = 1,
+    MAX_PLATFORMS           = 6,
 
     POINT_ID_RESSURRECT     = 0,            // center of the hall
     POINT_ID_PLATFORM       = 1,            // platform points
