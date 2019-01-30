@@ -56,7 +56,7 @@ enum
     NPC_FLAME_PATCH         = 20602,
     SPELL_FLAME_PATCH       = 35380,
 
-    MAX_PLATFORMS           = 6,
+    MAX_PLATFORMS           = 1,
 
     POINT_ID_RESSURRECT     = 0,            // center of the hall
     POINT_ID_PLATFORM       = 1,            // platform points
@@ -136,7 +136,7 @@ struct boss_alarAI : public ScriptedAI
         m_canMelee = false;
         m_rangeCheckTimer     = -1;
         m_uiFuturePlatformId    = 0;
-        m_uiPlatformMoveTimer   = 30000;
+        m_uiPlatformMoveTimer   = 300000;
         m_uiFlameQuillsTimer    = 180000;                   // after the 5th platform
 
         m_uiBerserkTimer        = 10 * MINUTE * IN_MILLISECONDS; // only after phase 2 starts
@@ -255,7 +255,7 @@ struct boss_alarAI : public ScriptedAI
             m_uiFuturePlatformId = (m_uiFuturePlatformId + 1) % MAX_PLATFORMS;
 
         m_canMelee = false;
-        m_uiPlatformMoveTimer = 30000;
+        m_uiPlatformMoveTimer = 300000;
     }
 
     void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
