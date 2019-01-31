@@ -205,7 +205,7 @@ struct boss_lady_vashjAI : public ScriptedAI
 
         m_uiSummonSporebatTimer       = 10000;
         m_uiSummonSporebatStaticTimer = 30000;
-        m_uiPersuasionTimer           = 30000;
+        m_uiPersuasionTimer           = 600000;
 
         m_lastSporebatSpell = 0;
 
@@ -281,7 +281,7 @@ struct boss_lady_vashjAI : public ScriptedAI
 
                         if (DoCastSpellIfCan(nullptr, SPELL_PERSUASION) == CAST_OK)
                         {
-                            m_uiPersuasionTimer = urand(25000, 35000);
+                            m_uiPersuasionTimer = urand(600000, 600000);
                             m_actionReadyStatus[i] = false;
                             return;
                         }
