@@ -1636,7 +1636,8 @@ void DungeonMap::SetResetSchedule(bool on)
     // only for normal instances
     // the reset time is only scheduled when there are no payers inside
     // it is assumed that the reset time will rarely (if ever) change while the reset is scheduled
-    if (!HavePlayers() && !IsRaidOrHeroicDungeon())
+    // if (!HavePlayers() && !IsRaidOrHeroicDungeon())
+    if (!HavePlayers())
     {
         time_t resetTime;
         if (on)
