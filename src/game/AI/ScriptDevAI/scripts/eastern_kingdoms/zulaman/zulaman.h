@@ -185,6 +185,7 @@ class instance_zulaman : public ScriptedInstance
         TimeEventNpcInfo m_aEventNpcInfo[MAX_CHESTS];
 
         uint32 m_uiEventTimer;
+        uint32 m_uiKontrolaTimer;
         uint32 m_uiGongCount;
 
         NalorakkTrashInfo m_aNalorakkEvent[MAX_BEAR_WAVES];
