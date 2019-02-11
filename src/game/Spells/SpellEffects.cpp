@@ -294,7 +294,7 @@ void Spell::EffectInstaKill(SpellEffectIndex /*eff_idx*/)
 void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
 {
     uint32 absorb = 0;
-    uint32 resist = 0;
+    int32 resist = 0;
 
     // Note: this hack with damage replace required until GO casting not implemented
     // environment damage spells already have around enemies targeting but this not help in case nonexistent GO casting support
@@ -5077,7 +5077,7 @@ void Spell::EffectLearnSkill(SpellEffectIndex eff_idx)
     target->SetSkillStep(skillid, step);
 
     if (WorldObject const* caster = GetCastingObject())
-        DEBUG_LOG("Spell: %s has learned skill %u (to step %u) from %s", target->GetGuidStr().c_str(), skillid, step, caster->GetGuidStr().c_str());
+        DEBUG_LOG("Spell: %s teaches %s skill %u (to step %u)", caster->GetGuidStr().c_str(), target->GetGuidStr().c_str(), skillid, step);
 }
 
 void Spell::EffectAddHonor(SpellEffectIndex /*eff_idx*/)
