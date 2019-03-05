@@ -412,7 +412,7 @@ struct boss_felmystAI : public ScriptedAI
                                 if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_VAPOR) == CAST_OK)
                                 {
                                     ++m_uiDemonicVaporCount;
-                                    m_uiDemonicVaporTimer = 11000;
+                                    m_uiDemonicVaporTimer = 3000;
                                 }
                             }
                         }

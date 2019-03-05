@@ -80,6 +80,17 @@ void instance_sunwell_plateau::OnPlayerEnter(Player* pPlayer)
             pPlayer->SummonCreature(NPC_FELMYST, aMadrigosaLoc[0].m_fX, aMadrigosaLoc[0].m_fY, aMadrigosaLoc[0].m_fZ, aMadrigosaLoc[0].m_fO, TEMPSPAWN_DEAD_DESPAWN, 0, true);
     }
 
+    // Spawn Eredar Twins if not already dead and Felmyst is complete
+    if (m_auiEncounter[TYPE_FELMYST] == DONE && m_auiEncounter[TYPE_EREDAR_TWINS] != DONE)
+    {
+        // Summon Sacrolash and Alythess in reload case if not already summoned
+        if (!GetSingleCreatureFromStorage(NPC_SACROLASH, true) && !GetSingleCreatureFromStorage(NPC_ALYTHESS, true))
+        {
+            pPlayer->SummonCreature(NPC_SACROLASH, afSacrolashSpawnLoc[0], afSacrolashSpawnLoc[1], afSacrolashSpawnLoc[2], afSacrolashSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0, true);
+            pPlayer->SummonCreature(NPC_ALYTHESS, afAlythessSpawnLoc[0], afAlythessSpawnLoc[1], afAlythessSpawnLoc[2], afAlythessSpawnLoc[3], TEMPSPAWN_DEAD_DESPAWN, 0, true);
+        }
+    }
+
     // Spawn M'uru after the Eredar Twins
     if (m_auiEncounter[TYPE_EREDAR_TWINS] == DONE && m_auiEncounter[TYPE_MURU] != DONE)
     {
@@ -281,7 +292,7 @@ void instance_sunwell_plateau::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-                   << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5];
+                   << m_auiEncounter[3] << " " << m_auiEncounter[4]; /* << " " << m_auiEncounter[5];*/
 
         m_strInstData = saveStream.str();
 
@@ -363,7 +374,7 @@ void instance_sunwell_plateau::Load(const char* in)
 
     std::istringstream loadStream(in);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >>
-               m_auiEncounter[3] >> m_auiEncounter[4] >> m_auiEncounter[5];
+               m_auiEncounter[3] >> m_auiEncounter[4]; /* >> m_auiEncounter[5]; */
 
     for (uint32& i : m_auiEncounter)
     {
