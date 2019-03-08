@@ -181,8 +181,8 @@ struct boss_felmystAI : public ScriptedAI
     {
         DoCastSpellIfCan(m_creature, SPELL_NOXIOUS_FUMES);
 
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_FELMYST, IN_PROGRESS);
+        // if (m_pInstance)
+        //     m_pInstance->SetData(TYPE_FELMYST, IN_PROGRESS);
 
         float fGroundZ = m_creature->GetMap()->GetHeight(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
         m_creature->GetMotionMaster()->MovePoint(PHASE_TRANSITION, pWho->GetPositionX(), pWho->GetPositionY(), fGroundZ, false);
