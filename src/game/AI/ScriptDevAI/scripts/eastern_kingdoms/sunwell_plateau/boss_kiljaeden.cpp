@@ -632,7 +632,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
                     m_uiArmageddonTimer -= uiDiff;
 
                 // Go to next phase and start transition dialogue
-                if (m_uiPhase == PHASE_ARMAGEDDON && m_creature->GetHealthPercent() < 25.0f)
+                if (m_uiPhase == PHASE_ARMAGEDDON && m_creature->GetHealthPercent() < 5.0f)
                     StartNextDialogueText(PHASE_SACRIFICE);
 
             // no break - use the spells from the phases below;
