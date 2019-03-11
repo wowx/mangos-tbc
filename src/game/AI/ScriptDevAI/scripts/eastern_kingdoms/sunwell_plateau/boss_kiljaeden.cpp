@@ -632,7 +632,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
                     m_uiArmageddonTimer -= uiDiff;
 
                 // Go to next phase and start transition dialogue
-                if (m_uiPhase == PHASE_ARMAGEDDON && m_creature->GetHealthPercent() < 5.0f)
+                if (m_uiPhase == PHASE_ARMAGEDDON && m_creature->GetHealthPercent() < 50.0f)
                     StartNextDialogueText(PHASE_SACRIFICE);
 
             // no break - use the spells from the phases below;
@@ -656,7 +656,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
                     m_uiFlameDartTimer -= uiDiff;
 
                 // Go to next phase and start transition dialogue
-                if (m_uiPhase == PHASE_DARKNESS && m_creature->GetHealthPercent() < 25.0f) // 55
+                if (m_uiPhase == PHASE_DARKNESS && m_creature->GetHealthPercent() < 5.0f) // 55
                     StartNextDialogueText(PHASE_ARMAGEDDON);
 
             // no break - use the spells from the phase below;
