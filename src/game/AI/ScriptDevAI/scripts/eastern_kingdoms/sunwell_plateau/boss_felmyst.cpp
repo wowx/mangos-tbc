@@ -142,7 +142,7 @@ struct boss_felmystAI : public ScriptedAI
     {
         if (!m_bHasTransformed)
         {
-            if (pWho->GetTypeId() == TYPEID_PLAYER && pWho->IsWithinLOSInMap(m_creature) && pWho->IsWithinDistInMap(m_creature, 200.0f))
+            if (pWho->GetTypeId() == TYPEID_PLAYER && pWho->IsWithinLOSInMap(m_creature) && pWho->IsWithinDistInMap(m_creature, 100.0f))
             {
                 DoScriptText(SAY_INTRO, m_creature);
                 m_bHasTransformed = true;
