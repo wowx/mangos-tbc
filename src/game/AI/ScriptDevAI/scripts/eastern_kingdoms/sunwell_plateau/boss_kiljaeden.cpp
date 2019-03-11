@@ -484,14 +484,6 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
         }
         else if (pSummoned->GetEntry() == NPC_SHIELD_ORB)
         {
-            if (pSummoned->IsTemporarySummon())
-            {
-                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(pSummoned->GetSpawnerGuid()))
-                {
-                    pSummoned->CastSpell(pSummoned, SPELL_SHADOW_BOLT_AURA, TRIGGERED_OLD_TRIGGERED);
-                    pSummoned->AI()->AttackStart(pPlayer);
-                }
-            }
             // Start the movement of the shadow orb - calculate new position based on the angle between the boss and orb
             float fX, fY;
             float fAng = m_creature->GetAngle(pSummoned) + M_PI_F / 8;
@@ -504,6 +496,13 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
             // Move to new position
             pSummoned->GetMotionMaster()->Clear();
             pSummoned->GetMotionMaster()->MovePoint(1, fX, fY, pSummoned->GetPositionZ());
+
+            if (Player* pPlayer = m_creature->GetMap()->GetPlayer(pSummoned->GetSpawnerGuid()))
+            {
+                pSummoned->CastSpell(pSummoned, SPELL_SHADOW_BOLT_AURA, TRIGGERED_OLD_TRIGGERED);
+                pSummoned->AI()->AttackStart(pPlayer);
+            }
+
         }
         else if (pSummoned->GetEntry() == NPC_SINISTER_REFLECTION)
         {
