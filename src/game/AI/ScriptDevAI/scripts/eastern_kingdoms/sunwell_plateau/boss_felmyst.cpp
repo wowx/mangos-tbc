@@ -265,10 +265,10 @@ struct boss_felmystAI : public ScriptedAI
             case SUBPHASE_BREATH_MOVE:
                 if (!m_pInstance)
                     return;
-
+/*
                 // remove speed aura
                 m_creature->RemoveAurasDueToSpell(SPELL_SPEED_BURST);
-/*
+
                 // Get to the flight trigger on the same side of the arena
                 if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(!m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
@@ -402,9 +402,9 @@ struct boss_felmystAI : public ScriptedAI
 /*
                                 // select the side on which we want to fly
                                 m_bIsLeftSide = urand(0, 1) != 0;*/
-                                m_uiCorruptionCount = 0;
-                                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
-/*                                if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
+                                m_uiCorruptionCount = 3;
+/*                                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
+                                if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
                                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);*/
                             }
                             else
@@ -433,8 +433,8 @@ struct boss_felmystAI : public ScriptedAI
                                 m_uiCorruptionIndex = urand(0, 2);
                                 if (Creature* pTrigger = m_creature->GetMap()->GetCreature(m_pInstance->SelectFelmystFlightTrigger(m_bIsLeftSide, m_uiCorruptionIndex)))
                                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_BREATH_PREPARE, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
-*/
-                                m_uiSubPhase = SUBPHASE_BREATH_MOVE;
+
+                                m_uiSubPhase = SUBPHASE_BREATH_MOVE;*/
                                 m_uiCorruptionTimer = 0;
                             }
                             else
