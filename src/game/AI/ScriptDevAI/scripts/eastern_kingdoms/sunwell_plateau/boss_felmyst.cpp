@@ -235,7 +235,7 @@ struct boss_felmystAI : public ScriptedAI
                 break;
             case SUBPHASE_VAPOR:
                 // After the third breath land and resume phase 1
-                if (m_uiCorruptionCount == 0)
+                if (m_uiCorruptionCount == 1)
                 {
                     m_uiPhase = PHASE_TRANSITION;
                     float fGroundZ = m_creature->GetMap()->GetHeight(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
@@ -244,16 +244,15 @@ struct boss_felmystAI : public ScriptedAI
                 }
 
                 // prepare to move to flight trigger
-                //++m_uiCorruptionCount;
+                ++m_uiCorruptionCount;
                 m_uiCorruptionTimer = 5000;
-                m_uiPhase = PHASE_TRANSITION;
-                // m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
+                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
                 break;
             case SUBPHASE_BREATH_PREPARE:
                 // move across the arena
                 if (!m_pInstance)
                     return;
-/*
+
                 // Fly to the other side, casting the breath. Keep the same trigger index
                 if (Creature* pTrigger = m_creature->GetMap()->GetCreature(m_pInstance->SelectFelmystFlightTrigger(!m_bIsLeftSide, m_uiCorruptionIndex)))
                 {
@@ -261,21 +260,25 @@ struct boss_felmystAI : public ScriptedAI
                     DoCastSpellIfCan(m_creature, SPELL_SPEED_BURST, CAST_TRIGGERED);
                     DoCastSpellIfCan(m_creature, SPELL_FOG_CORRUPTION, CAST_TRIGGERED);
                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_BREATH_MOVE, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
-                }*/
+                }
                 break;
             case SUBPHASE_BREATH_MOVE:
                 if (!m_pInstance)
                     return;
-/*
+
                 // remove speed aura
                 m_creature->RemoveAurasDueToSpell(SPELL_SPEED_BURST);
-
+/*
                 // Get to the flight trigger on the same side of the arena
                 if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(!m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
 
                 // switch sides
                 m_bIsLeftSide = !m_bIsLeftSide;*/
+                m_uiPhase = PHASE_GROUND;
+                SetCombatMovement(true);
+                m_creature->SetLevitate(false);
+                DoStartMovement(m_creature->getVictim());
                 break;
             case PHASE_TRANSITION:
                 // switch back to ground combat from flight transition
@@ -400,14 +403,13 @@ struct boss_felmystAI : public ScriptedAI
                             {
                                 if (!m_pInstance)
                                     return;
-/*
+
                                 // select the side on which we want to fly
-                                m_bIsLeftSide = urand(0, 1) != 0;*/
+                                m_bIsLeftSide = urand(0, 1) != 0;
                                 m_uiCorruptionCount = 0;
-                                m_uiPhase = PHASE_TRANSITION;
-/*                                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
-                                if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
-                                    m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);*/
+                                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
+                               if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
+                                    m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
                             }
                             else
                             {
@@ -430,15 +432,14 @@ struct boss_felmystAI : public ScriptedAI
                             {
                                 if (!m_pInstance)
                                     return;
-/*
+
                                 // Fly to trigger on the same side - choose a random index for the trigger
                                 m_uiCorruptionIndex = urand(0, 2);
                                 if (Creature* pTrigger = m_creature->GetMap()->GetCreature(m_pInstance->SelectFelmystFlightTrigger(m_bIsLeftSide, m_uiCorruptionIndex)))
                                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_BREATH_PREPARE, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);
 
-                                m_uiSubPhase = SUBPHASE_BREATH_MOVE;*/
+                                m_uiSubPhase = SUBPHASE_BREATH_MOVE;
                                 m_uiCorruptionTimer = 0;
-                                m_uiPhase = PHASE_TRANSITION;
                             }
                             else
                                 m_uiCorruptionTimer -= uiDiff;
