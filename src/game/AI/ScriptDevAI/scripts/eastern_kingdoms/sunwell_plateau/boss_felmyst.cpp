@@ -246,6 +246,7 @@ struct boss_felmystAI : public ScriptedAI
                 // prepare to move to flight trigger
                 //++m_uiCorruptionCount;
                 m_uiCorruptionTimer = 5000;
+                m_uiPhase = PHASE_TRANSITION;
                 // m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
                 break;
             case SUBPHASE_BREATH_PREPARE:
@@ -403,6 +404,7 @@ struct boss_felmystAI : public ScriptedAI
                                 // select the side on which we want to fly
                                 m_bIsLeftSide = urand(0, 1) != 0;*/
                                 m_uiCorruptionCount = 0;
+                                m_uiPhase = PHASE_TRANSITION;
 /*                                m_uiSubPhase = SUBPHASE_BREATH_PREPARE;
                                 if (Creature* pTrigger = m_pInstance->GetSingleCreatureFromStorage(m_bIsLeftSide ? NPC_FLIGHT_TRIGGER_LEFT : NPC_FLIGHT_TRIGGER_RIGHT))
                                     m_creature->GetMotionMaster()->MovePoint(SUBPHASE_VAPOR, pTrigger->GetPositionX(), pTrigger->GetPositionY(), pTrigger->GetPositionZ(), false);*/
@@ -436,6 +438,7 @@ struct boss_felmystAI : public ScriptedAI
 
                                 m_uiSubPhase = SUBPHASE_BREATH_MOVE;*/
                                 m_uiCorruptionTimer = 0;
+                                m_uiPhase = PHASE_TRANSITION;
                             }
                             else
                                 m_uiCorruptionTimer -= uiDiff;
