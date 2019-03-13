@@ -158,7 +158,7 @@ struct boss_felmystAI : public ScriptedAI
         m_creature->CombatStop(true);
 
         // Add the visual aura back when evading - workaround because there is no way to remove only the negative auras
-        // DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
+        DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
 
         // Also make sure that the charmed targets are killed
         DoCastSpellIfCan(m_creature, SPELL_SOUL_SEVER, CAST_TRIGGERED);
@@ -175,7 +175,7 @@ struct boss_felmystAI : public ScriptedAI
         m_creature->SetLootRecipient(nullptr);
 
         Reset();
-        ScriptedAI::EnterEvadeMode();
+        // ScriptedAI::EnterEvadeMode();
     }
 
     void Aggro(Unit* pWho) override
