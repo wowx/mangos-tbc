@@ -125,7 +125,7 @@ struct boss_felmystAI : public ScriptedAI
         // Ground Phase
         m_uiCorrosionTimer      = 30000;
         m_uiCleaveTimer         = urand(3000, 5000);
-        m_uiGasNovaTimer        = 35000;
+        m_uiGasNovaTimer        = 25000;
         m_uiEncapsulateTimer    = urand(39000, 40000);
         m_uiFlyPhaseTimer       = 60000;        // flight phase after 1 min
 
@@ -158,7 +158,7 @@ struct boss_felmystAI : public ScriptedAI
         m_creature->CombatStop(true);
 
         // Add the visual aura back when evading - workaround because there is no way to remove only the negative auras
-        DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
+        // DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
 
         // Also make sure that the charmed targets are killed
         DoCastSpellIfCan(m_creature, SPELL_SOUL_SEVER, CAST_TRIGGERED);
