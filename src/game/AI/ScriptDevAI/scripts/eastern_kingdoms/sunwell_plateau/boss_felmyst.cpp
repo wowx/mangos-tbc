@@ -175,6 +175,7 @@ struct boss_felmystAI : public ScriptedAI
         m_creature->SetLootRecipient(nullptr);
 
         Reset();
+        ScriptedAI::EnterEvadeMode();
     }
 
     void Aggro(Unit* pWho) override
