@@ -117,7 +117,7 @@ struct boss_felmystAI : public ScriptedAI
     void Reset() override
     {
         // Transform into Felmyst dragon
-        DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL);
+        DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
 
         m_uiPhase               = PHASE_GROUND;
         m_uiBerserkTimer        = 10 * MINUTE * IN_MILLISECONDS;
@@ -174,7 +174,7 @@ struct boss_felmystAI : public ScriptedAI
 
         m_creature->SetLootRecipient(nullptr);
 
-        // Reset();
+        Reset();
         ScriptedAI::EnterEvadeMode();
     }
 
