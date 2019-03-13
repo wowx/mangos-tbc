@@ -174,7 +174,7 @@ struct boss_felmystAI : public ScriptedAI
 
         m_creature->SetLootRecipient(nullptr);
 
-        Reset();
+        // Reset();
         ScriptedAI::EnterEvadeMode();
     }
 
