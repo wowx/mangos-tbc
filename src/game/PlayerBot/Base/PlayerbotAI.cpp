@@ -97,7 +97,7 @@ PlayerbotAI::PlayerbotAI(PlayerbotMgr* const mgr, Player* const bot) :
     m_bDebugCommandChat(false)
 {
     // set bot state
-    m_botState = BOTSTATE_NORMAL;
+    m_botState = BOTSTATE_LOADING;
 
     // reset some pointers
     m_targetChanged = false;
@@ -2217,7 +2217,7 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                 if (countTradeable > 0)
                     out << outT.str();
                 if (countNonTradeable > 0)
-                    out << outNT.str();
+                    out << "\r" << outNT.str();
                 SendWhisper(out.str().c_str(), *(m_bot->GetTrader()));
 
                 // list out items in other removable backpacks
@@ -2262,7 +2262,7 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                         if (countTradeable > 0)
                             outbag << outbagT.str();
                         if (countNonTradeable > 0)
-                            outbag << outbagNT.str();
+                            outbag << "\r" << outbagNT.str();
                         SendWhisper(outbag.str().c_str(), *(m_bot->GetTrader()));
                     }
                 }
@@ -2332,6 +2332,10 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
             uint16 castFlags;
             p >> castFlags;
 
+            // use this spell, 836 login effect, as a signal from server that we're in world
+            if (spellId == 836 && m_botState == BOTSTATE_LOADING)
+                SetState(BOTSTATE_NORMAL);
+
             return;
         }
 
@@ -2390,6 +2394,10 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                 p.read_skip<uint32>();  // 4 randomPropertyId
                 p >> lootslot_type;     // 1 LootSlotType
 
+                ItemPrototype const *pProto = ObjectMgr::GetItemPrototype(itemid);
+                if (!pProto)
+                    continue;
+
                 if (lootslot_type != LOOT_SLOT_NORMAL && lootslot_type != LOOT_SLOT_OWNER)
                     continue;
 
@@ -2398,13 +2406,34 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                 if (loot_type == LOOT_SKINNING || HasCollectFlag(COLLECT_FLAG_LOOT) ||
                         (loot_type == LOOT_CORPSE && (IsInQuestItemList(itemid) || IsItemUseful(itemid))))
                 {
+                    ItemPosCountVec dest;
+                    if (m_bot->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemid, itemcount) == EQUIP_ERR_INVENTORY_FULL)
+                    {
+                        if (GetManager()->m_confDebugWhisper)
+                            TellMaster("I can't take %; my inventory is full.", pProto->Name1);
+                        m_inventory_full = true;
+                        continue;
+                    }
+
+                    if (GetManager()->m_confDebugWhisper)
+                        TellMaster("Store loot item %s", pProto->Name1);
+
                     WorldPacket* const packet = new WorldPacket(CMSG_AUTOSTORE_LOOT_ITEM, 1);
                     *packet << itemindex;
                     m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(packet)));
                 }
+                else
+                {
+                    if (GetManager()->m_confDebugWhisper)
+                        TellMaster("Skipping loot item %s", pProto->Name1);
+                }
             }
 
+            if (GetManager()->m_confDebugWhisper)
+                TellMaster("Releasing loot");
             // release loot
+            m_lootPrev = m_lootCurrent;
+            m_lootCurrent = ObjectGuid();
             WorldPacket* const packet = new WorldPacket(CMSG_LOOT_RELEASE, 8);
             *packet << guid;
             m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(packet)));
@@ -2419,10 +2448,9 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
 
             p >> guid;
 
-            if (guid == m_lootCurrent)
+            if (guid == m_lootPrev)
             {
-
-                Creature* c = m_bot->GetMap()->GetCreature(m_lootCurrent);
+                Creature* c = m_bot->GetMap()->GetCreature(m_lootPrev);
 
                 if (c && c->GetCreatureInfo()->SkinningLootId && c->GetLootStatus() != CREATURE_LOOT_STATUS_LOOTED)
                 {
@@ -2437,23 +2465,18 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                         uint32 reqSkillValue = targetLevel < 10 ? 0 : targetLevel < 20 ? (targetLevel - 10) * 10 : targetLevel * 5;
                         if (skillValue >= reqSkillValue)
                         {
-                            if (m_lootCurrent != m_lootPrev)    // if this wasn't previous loot try again
-                            {
-                                m_lootPrev = m_lootCurrent;
-                                SetIgnoreUpdateTime(3);
-                                return; // so that the DoLoot function is called again to get skin
-                            }
+                            m_lootCurrent = m_lootPrev;
+                            if (GetManager()->m_confDebugWhisper)
+                                TellMaster("I will try to skin next loot attempt.");
+
+                            SetIgnoreUpdateTime(1);
+                            return; // so that the DoLoot function is called again to get skin
                         }
                         else
                             TellMaster("My skill is %u but it requires %u", skillValue, reqSkillValue);
                     }
                 }
 
-                // if previous is current, clear
-                if (m_lootPrev == m_lootCurrent)
-                    m_lootPrev = ObjectGuid();
-                // clear current target
-                m_lootCurrent = ObjectGuid();
                 // clear movement
                 m_bot->GetMotionMaster()->Clear(false);
                 m_bot->GetMotionMaster()->MoveIdle();
@@ -2549,6 +2572,75 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                     m_needItemList.erase(itemid);
             }
 
+            return;
+        }
+
+        case MSG_MOVE_TELEPORT_ACK:
+        {
+            WorldPacket rp(packet);
+            ObjectGuid guid;
+            rp >> guid.ReadAsPacked();
+
+            if (guid != m_bot->GetObjectGuid())
+                return;
+
+            uint32 counter;
+            rp >> counter;
+            // movement location to teleport to
+            MovementInfo mi;
+            rp >> mi;
+
+            if (GetManager()->m_confDebugWhisper)
+                TellMaster("Preparing to teleport");
+
+            if (m_bot->IsBeingTeleportedNear())
+            {
+                // simulate same packets that are sent for client
+                WorldPacket* const p = new WorldPacket(MSG_MOVE_TELEPORT_ACK, 8 + 4 + 4);
+                *p << m_bot->GetObjectGuid();
+                *p << counter;
+                *p << (uint32) time(0); // time - not currently used
+                m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(p)));
+
+                // send movement info using received movement packet, pops in location
+                WorldPacket* const p2 = new WorldPacket(MSG_MOVE_HEARTBEAT, 28);
+                *p2 << mi;
+                m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(p2)));
+
+                WorldPacket* const p3 = new WorldPacket(MSG_MOVE_FALL_LAND, 28);
+                *p3 << mi;
+                m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(p3)));
+
+                // resume normal state if was loading
+                if (m_botState == BOTSTATE_LOADING)
+                    SetState(BOTSTATE_NORMAL);
+            }
+            return;
+        }
+        case SMSG_TRANSFER_PENDING:
+        {
+            if (GetManager()->m_confDebugWhisper)
+                TellMaster("World transfer is pending");
+            SetState(BOTSTATE_LOADING);
+            SetIgnoreUpdateTime(1);
+            m_bot->GetMotionMaster()->Clear(true);
+            return;
+        }
+        case SMSG_NEW_WORLD:
+        {
+            if (GetManager()->m_confDebugWhisper)
+                TellMaster("Preparing to teleport far");
+
+            if (m_bot->IsBeingTeleportedFar())
+            {
+                // simulate client canceling trade before worldport
+                WorldPacket* const pt1 = new WorldPacket(CMSG_CANCEL_TRADE);
+                m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(pt1)));
+
+                WorldPacket* const p = new WorldPacket(MSG_MOVE_WORLDPORT_ACK);
+                m_bot->GetSession()->QueuePacket(std::move(std::unique_ptr<WorldPacket>(p)));
+                SetState(BOTSTATE_NORMAL);
+            }
             return;
         }
 
@@ -3091,8 +3183,9 @@ void PlayerbotAI::Attack(Unit* forcedTarget)
 
     m_bot->Attack(m_targetCombat, true);
 
-    // add thingToAttack to loot list
-    m_lootTargets.push_back(m_targetCombat->GetObjectGuid());
+    // add thingToAttack to loot list to loot after combat
+    if (HasCollectFlag(COLLECT_FLAG_COMBAT))
+        m_lootTargets.push_back(m_targetCombat->GetObjectGuid());
 }
 
 // intelligently sets a reasonable combat order for this bot
@@ -3797,7 +3890,7 @@ void PlayerbotAI::DoLoot()
             m_bot->GetMotionMaster()->MoveIdle();
             return;
         }
-        else if (c->loot && !c->loot->CanLoot(m_bot))
+        else if (c->loot && !c->loot->CanLoot(m_bot) && !c->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE))
         {
             if (GetManager()->m_confDebugWhisper)
                 TellMaster("%s is not lootable by me.", wo->GetName());
@@ -4651,7 +4744,8 @@ void PlayerbotAI::SetMovementOrder(MovementOrderType mo, Unit* followTarget)
 {
     m_movementOrder = mo;
     m_followTarget = followTarget;
-    MovementReset();
+    if (m_botState != BOTSTATE_LOADING)
+        MovementReset();
 }
 
 void PlayerbotAI::MovementReset()
@@ -4662,8 +4756,6 @@ void PlayerbotAI::MovementReset()
     {
         if (!m_followTarget)
             return;
-
-        WorldObject* distTarget = m_followTarget;   // target to distance check
 
         // don't follow while in combat
         if (m_bot->isInCombat())
@@ -4676,16 +4768,12 @@ void PlayerbotAI::MovementReset()
         if (pTarget)
         {
             // check player for follow situations
-            if (pTarget->IsBeingTeleported() || pTarget->IsTaxiFlying())
+            if (pTarget->IsBeingTeleported() || pTarget->IsTaxiFlying() || pTarget->GetCorpse())
                 return;
-
-            // use player's corpse as distance check target
-            if (pTarget->GetCorpse())
-                distTarget = pTarget->GetCorpse();
         }
 
         // is bot too far from the follow target
-        if (!m_bot->IsWithinDistInMap(distTarget, 50))
+        if (!m_bot->IsWithinDistInMap(m_followTarget, 50))
         {
             DoTeleport(*m_followTarget);
             return;
@@ -4907,14 +4995,34 @@ bool PlayerbotAI::IsMoving()
 
 void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
 {
-    if (m_bot->IsBeingTeleported() || m_bot->GetTrader())
-        return;
-
     if (CurrentTime() < m_ignoreAIUpdatesUntilTime)
         return;
 
     // default updates occur every two seconds
     SetIgnoreUpdateTime(2);
+    
+    if (m_botState == BOTSTATE_LOADING)
+    {
+        if (m_bot->IsBeingTeleported())
+            return;
+        else
+        {
+            // is bot too far from the follow target
+            if (!m_bot->IsWithinDistInMap(m_followTarget, 50))
+            {
+                DoTeleport(*m_followTarget);
+                return;
+            }
+            else
+                SetState(BOTSTATE_NORMAL);
+
+            return;
+        }
+    }
+
+    if (m_bot->IsBeingTeleported() || m_bot->GetTrader())
+        return;
+
     if (m_FollowAutoGo == FOLLOWAUTOGO_INIT)
     {
         if (m_combatOrder & ORDERS_TANK)
@@ -4958,9 +5066,7 @@ void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
             if (!corpse)
                 // DEBUG_LOG ("[PlayerbotAI]: UpdateAI - %s has no corpse!", m_bot->GetName());
                 return;
-            // teleport ghost from graveyard to corpse
-            // DEBUG_LOG ("[PlayerbotAI]: UpdateAI - Teleport %s to corpse...", m_bot->GetName());
-            DoTeleport(*corpse);
+
             // check if we are allowed to resurrect now
             time_t resurrect_time = corpse->GetGhostTime() + m_bot->GetCorpseReclaimDelay(corpse->GetType() == CORPSE_RESURRECTABLE_PVP);
             if (resurrect_time > CurrentTime())
@@ -6511,8 +6617,15 @@ void PlayerbotAI::findNearbyGO()
 
 void PlayerbotAI::findNearbyCreature()
 {
+    // Do not waste time finding a creature if bot has nothing to do
+    // and clear list (sanity check)
+    if (m_tasks.empty())
+    {
+        m_findNPC.clear();
+        return;
+    }
     CreatureList creatureList;
-    float radius = 2.5;
+    float radius = INTERACTION_DISTANCE;
 
     CellPair pair(MaNGOS::ComputeCellPair(m_bot->GetPositionX(), m_bot->GetPositionY()));
     Cell cell(pair);
@@ -6531,7 +6644,7 @@ void PlayerbotAI::findNearbyCreature()
     {
         Creature* currCreature = *iter;
 
-        for (std::list<enum NPCFlags>::iterator itr = m_findNPC.begin(); itr != m_findNPC.end();)
+        for (std::list<enum NPCFlags>::iterator itr = m_findNPC.begin(); itr != m_findNPC.end(); itr = m_findNPC.erase(itr))
         {
             uint32 npcflags = currCreature->GetUInt32Value(UNIT_NPC_FLAGS);
 
@@ -6558,6 +6671,9 @@ void PlayerbotAI::findNearbyCreature()
             if (m_bot->GetDistance(wo) < INTERACTION_DISTANCE)
             {
                 // DEBUG_LOG("%s is interacting with (%s)",m_bot->GetName(),currCreature->GetCreatureInfo()->Name);
+                // Stop moving as soon as bot is in range
+                m_bot->GetMotionMaster()->Clear(false);
+                m_bot->GetMotionMaster()->MoveIdle();
                 GossipMenuItemsMapBounds pMenuItemBounds = sObjectMgr.GetGossipMenuItemsMapBounds(currCreature->GetCreatureInfo()->GossipMenuId);
 
                 // prepares quest menu when true
@@ -6705,8 +6821,6 @@ void PlayerbotAI::findNearbyCreature()
                     m_bot->HandleEmoteCommand(EMOTE_ONESHOT_TALK);
                 }
             }
-            m_bot->GetMotionMaster()->Clear(false);
-            m_bot->GetMotionMaster()->MoveIdle();
         }
     }
 }
@@ -7134,22 +7248,6 @@ bool PlayerbotAI::DoTeleport(WorldObject& /*obj*/)
         }
     }
     return true;
-}
-
-void PlayerbotAI::HandleTeleportAck()
-{
-    SetIgnoreUpdateTime(6);
-    m_bot->GetMotionMaster()->Clear(true);
-    if (m_bot->IsBeingTeleportedNear())
-    {
-        WorldPacket p = WorldPacket(MSG_MOVE_TELEPORT_ACK, 8 + 4 + 4);
-        p << m_bot->GetObjectGuid();
-        p << (uint32) 0; // supposed to be flags? not used currently
-        p << (uint32) CurrentTime(); // time - not currently used
-        m_bot->GetSession()->HandleMoveTeleportAckOpcode(p);
-    }
-    else if (m_bot->IsBeingTeleportedFar())
-        m_bot->GetSession()->HandleMoveWorldportAckOpcode();
 }
 
 // Localization support
