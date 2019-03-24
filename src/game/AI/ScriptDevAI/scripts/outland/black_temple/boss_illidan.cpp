@@ -387,7 +387,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
         SetCombatMovement(true);
 
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, EQUIP_NO_CHANGE);
     }
 
@@ -483,6 +483,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
                 break;
             case NPC_ILLIDAN_STORMRAGE:
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 m_creature->SetInCombatWithZone();
                 if (m_pInstance)
                 {
@@ -676,11 +677,11 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
         {
             if (m_uiBerserkTimer <= uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
+            /*    if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
                 {
                     DoScriptText(SAY_BERSERK, m_creature);
                     m_uiBerserkTimer = 0;
-                }
+                } */
             }
             else
                 m_uiBerserkTimer -= uiDiff;
@@ -1513,7 +1514,7 @@ struct npc_flame_of_azzinothAI : public ScriptedAI
                     m_uiWrathCheckTimer = 1000;
                 else
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_UNCAGED_WRATH, CAST_TRIGGERED) == CAST_OK)
+                    // if (DoCastSpellIfCan(m_creature, SPELL_UNCAGED_WRATH, CAST_TRIGGERED) == CAST_OK)
                         m_uiWrathCheckTimer = 0;
                 }
             }
