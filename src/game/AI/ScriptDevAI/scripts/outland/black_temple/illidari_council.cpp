@@ -262,7 +262,7 @@ struct mob_illidari_councilAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff) override
     {
         // Make the council members health equal every 2-3 secs
-        if (m_bEventBegun && !m_bEventEnd)
+    /*    if (m_bEventBegun && !m_bEventEnd)
         {
             if (m_uiEquivalencyTimer < uiDiff)
             {
@@ -271,7 +271,7 @@ struct mob_illidari_councilAI : public ScriptedAI
             }
             else
                 m_uiEquivalencyTimer -= uiDiff;
-        }
+        } */
     }
 };
 
