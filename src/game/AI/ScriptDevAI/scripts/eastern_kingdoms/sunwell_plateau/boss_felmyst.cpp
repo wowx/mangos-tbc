@@ -155,7 +155,7 @@ struct boss_felmystAI : public ScriptedAI
     void EnterEvadeMode() override
     {
         m_creature->RemoveAllAurasOnEvade();
-        m_creature->CombatStop(true);
+        // m_creature->CombatStop(true);
 
         // Add the visual aura back when evading - workaround because there is no way to remove only the negative auras
         DoCastSpellIfCan(m_creature, SPELL_FELBLAZE_VISUAL, CAST_TRIGGERED);
