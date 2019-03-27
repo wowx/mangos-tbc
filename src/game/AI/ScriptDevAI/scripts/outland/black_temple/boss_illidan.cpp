@@ -634,7 +634,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
             return;
 
         // Make Akama evade combat at 85%
-        if (!m_bHasSummonedElites && m_creature->GetHealthPercent() < 85.0f)
+        if (!m_bHasSummonedElites && m_creature->GetHealthPercent() < 95.0f)
         {
             StartNextDialogueText(SAY_ILLIDAN_MINION);
             m_bHasSummonedElites = true;
@@ -658,7 +658,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
         }
 
         // Summon Maiev at 30% hp
-        if (m_uiPhase == PHASE_DUAL_NORMAL && m_creature->GetHealthPercent() <= 30.0f)
+        if (m_uiPhase == PHASE_DUAL_NORMAL && m_creature->GetHealthPercent() <= 15.0f)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SHADOW_PRISON, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
             {
@@ -679,11 +679,11 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
         {
             if (m_uiBerserkTimer <= uiDiff)
             {
-            /*    if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
                 {
                     DoScriptText(SAY_BERSERK, m_creature);
                     m_uiBerserkTimer = 0;
-                } */
+                }
             }
             else
                 m_uiBerserkTimer -= uiDiff;
@@ -783,6 +783,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
                 else
                     m_uiDrawSoulTimer -= uiDiff;
 
+                SetMeleeEnabled(true);
                 DoMeleeAttackIfReady();
 
                 break;
@@ -960,9 +961,9 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
 
                                 SetCombatMovement(true);
                                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
-                                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+                                // m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                                // m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                                 m_uiTransformTimer = 64000;
                                 m_uiLandTimer = 0;
                                 break;
@@ -1251,6 +1252,7 @@ struct npc_akama_illidanAI : public npc_escortAI, private DialogueHelper
                 m_uiHealDelayTimer = 30000;
         }
 
+        SetMeleeEnabled(true);
         DoMeleeAttackIfReady();
     }
 };
