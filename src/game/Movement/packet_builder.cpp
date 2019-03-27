@@ -77,6 +77,7 @@ namespace Movement
         uint32 pointCount = spline.getPointCount() - 3;
         uint32 last_idx = pointCount;
         const Vector3* real_path = &spline.getPoint(1);
+        Vector3 destination = real_path[last_idx];
 
         size_t lastIndexPos = data.wpos();
         data << last_idx;
