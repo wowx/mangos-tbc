@@ -388,6 +388,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
 
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         SetEquipmentSlots(false, EQUIP_UNEQUIP, EQUIP_UNEQUIP, EQUIP_NO_CHANGE);
     }
 
@@ -484,6 +485,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
             case NPC_ILLIDAN_STORMRAGE:
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 m_creature->SetInCombatWithZone();
                 if (m_pInstance)
                 {
@@ -958,7 +960,9 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
 
                                 SetCombatMovement(true);
                                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+                                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
                                 m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                                 m_uiTransformTimer = 64000;
                                 m_uiLandTimer = 0;
                                 break;
