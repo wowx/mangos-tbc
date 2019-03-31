@@ -89,12 +89,12 @@ class PlayerbotChatHandler : protected ChatHandler
 PlayerbotAI::PlayerbotAI(PlayerbotMgr* const mgr, Player* const bot) :
     m_mgr(mgr), m_bot(bot), m_classAI(0), m_ignoreAIUpdatesUntilTime(CurrentTime()),
     m_combatOrder(ORDERS_NONE), m_ScenarioType(SCENARIO_PVE),
-    m_TimeDoneEating(0), m_TimeDoneDrinking(0),
     m_CurrentlyCastingSpellId(0), m_CraftSpellId(0), m_spellIdCommand(0),
     m_targetGuidCommand(ObjectGuid()),
     m_taxiMaster(ObjectGuid()),
     m_AutoEquipToggle(false),
-    m_bDebugCommandChat(false)
+    m_bDebugCommandChat(false),
+    m_ignoreNeutralizeEffect(false)
 {
     // set bot state
     m_botState = BOTSTATE_LOADING;
@@ -2696,19 +2696,6 @@ uint8 PlayerbotAI::GetManaPercent() const
     return GetManaPercent(*m_bot);
 }
 
-uint8 PlayerbotAI::GetBaseManaPercent(const Unit& target) const
-{
-    if (target.GetPower(POWER_MANA) >= target.GetCreateMana())
-        return (100);
-    else
-        return (static_cast<float>(target.GetPower(POWER_MANA)) / target.GetCreateMana()) * 100;
-}
-
-uint8 PlayerbotAI::GetBaseManaPercent() const
-{
-    return GetBaseManaPercent(*m_bot);
-}
-
 uint8 PlayerbotAI::GetRageAmount(const Unit& target) const
 {
     return (static_cast<float>(target.GetPower(POWER_RAGE)));
@@ -3190,59 +3177,86 @@ void PlayerbotAI::Attack(Unit* forcedTarget)
 
 // intelligently sets a reasonable combat order for this bot
 // based on its class / level / etc
+// Function will try to avoid returning crowd controlled (neutralised) unit
+// unless told so by using forcedTarget parameter
 void PlayerbotAI::GetCombatTarget(Unit* forcedTarget)
 {
     // update attacker info now
     UpdateAttackerInfo();
 
+    Unit* candidateTarget;
+
     // check for attackers on protected unit, and make it a forcedTarget if any
     if (!forcedTarget && (m_combatOrder & ORDERS_PROTECT) && m_targetProtect)
     {
-        Unit* newTarget = FindAttacker((ATTACKERINFOTYPE)(AIT_VICTIMNOTSELF | AIT_HIGHESTTHREAT), m_targetProtect);
-        if (newTarget && newTarget != m_targetCombat)
+        candidateTarget = FindAttacker((ATTACKERINFOTYPE)(AIT_VICTIMNOTSELF | AIT_HIGHESTTHREAT), m_targetProtect);
+        if (candidateTarget && candidateTarget != m_targetCombat && !IsNeutralized(candidateTarget))
         {
-            forcedTarget = newTarget;
+            forcedTarget = candidateTarget;
             m_targetType = TARGET_THREATEN;
             if (m_mgr->m_confDebugWhisper)
                 TellMaster("Changing target to %s to protect %s", forcedTarget->GetName(), m_targetProtect->GetName());
         }
     }
-    else if (forcedTarget)
-    {
-        if (m_mgr->m_confDebugWhisper)
-            TellMaster("Changing target to %s by force!", forcedTarget->GetName());
-        m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
-    }
-
-    // we already have a target and we are not forced to change it
-    if (m_targetCombat && !forcedTarget)
-        return;
-
-    // forced to change target to current target == null operation
-    if (forcedTarget && forcedTarget == m_targetCombat)
-        return;
 
     // are we forced on a target?
     if (forcedTarget)
     {
+        // forced to change target to current target == null operation
+        if (forcedTarget && forcedTarget == m_targetCombat)
+            return;
+
+        if (m_mgr->m_confDebugWhisper)
+            TellMaster("Changing target to %s by force!", forcedTarget->GetName());
         m_targetCombat = forcedTarget;
+        m_ignoreNeutralizeEffect = true;    // Bypass IsNeutralized() checks on next updates
         m_targetChanged = true;
+        m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
     }
+
+    // we already have a target and we are not forced to change it
+    if (m_targetCombat)
+    {
+        // We have a target but it is neutralised and we are not forced to attack it: clear it for now
+        if ((IsNeutralized(m_targetCombat) && !m_ignoreNeutralizeEffect))
+        {
+            m_targetCombat = nullptr;
+            m_targetType = TARGET_NORMAL;
+            m_targetChanged = true;
+            return;
+        }
+        else
+        {
+            if (!IsNeutralized(m_targetCombat) && m_ignoreNeutralizeEffect)
+                m_ignoreNeutralizeEffect = false;                           // target is no longer neutralised, clear ignore order
+            return;                                                         // keep on attacking target
+        }
+    }
+
+    // No target for now, try to get one
     // do we have to assist someone?
     if (!m_targetCombat && (m_combatOrder & ORDERS_ASSIST) && m_targetAssist)
     {
-        m_targetCombat = FindAttacker((ATTACKERINFOTYPE)(AIT_VICTIMNOTSELF | AIT_LOWESTTHREAT), m_targetAssist);
-        if (m_mgr->m_confDebugWhisper && m_targetCombat)
-            TellMaster("Attacking %s to assist %s", m_targetCombat->GetName(), m_targetAssist->GetName());
-        m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
-        m_targetChanged = true;
+        candidateTarget = FindAttacker((ATTACKERINFOTYPE)(AIT_VICTIMNOTSELF | AIT_LOWESTTHREAT), m_targetAssist);
+        if (candidateTarget && !IsNeutralized(candidateTarget))
+        {
+            m_targetCombat = candidateTarget;
+            if (m_mgr->m_confDebugWhisper)
+                TellMaster("Attacking %s to assist %s", m_targetCombat->GetName(), m_targetAssist->GetName());
+            m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
+            m_targetChanged = true;
+        }
     }
     // are there any other attackers?
     if (!m_targetCombat)
     {
-        m_targetCombat = FindAttacker();
-        m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
-        m_targetChanged = true;
+        candidateTarget = FindAttacker();
+        if (candidateTarget && !IsNeutralized(candidateTarget))
+        {
+            m_targetCombat = candidateTarget;
+            m_targetType = (m_combatOrder & ORDERS_TANK || m_combatOrder & ORDERS_MAIN_TANK ? TARGET_THREATEN : TARGET_NORMAL);
+            m_targetChanged = true;
+        }
     }
     // no attacker found anyway
     if (!m_targetCombat)
@@ -3420,13 +3434,26 @@ Player* PlayerbotAI::GetGroupTank()
     if (m_bot->GetGroup())
     {
         Group::MemberSlotList const& groupSlot = m_bot->GetGroup()->GetMemberSlots();
+        // First loop: we look for a main tank (only bots with JOB_MAIN_TANK) can announce themselves as main tank
         for (Group::member_citerator itr = groupSlot.begin(); itr != groupSlot.end(); itr++)
         {
             Player* groupMember = sObjectMgr.GetPlayer(itr->guid);
             if (!groupMember || !groupMember->GetPlayerbotAI())
-                return nullptr;
-            if (groupMember->GetPlayerbotAI()->IsTank())
+                continue;
+            if (groupMember->GetPlayerbotAI()->IsMainTank())
                 return groupMember;
+        }
+        // Second loop: we look for any tank (bots with JOB_TANK or human players with the right class/spec combination)
+        for (Group::member_citerator itr = groupSlot.begin(); itr != groupSlot.end(); itr++)
+        {
+            Player* groupMember = sObjectMgr.GetPlayer(itr->guid);
+            if (groupMember)
+            {
+                if (!groupMember->GetPlayerbotAI() && m_bot->GetPlayerbotAI()->GetClassAI()->GetTargetJob(groupMember) & JOB_TANK)
+                    return groupMember;
+                else if (groupMember->GetPlayerbotAI() && groupMember->GetPlayerbotAI()->IsTank())
+                    return groupMember;
+            }
         }
     }
 
@@ -4983,11 +5010,6 @@ void PlayerbotAI::Announce(AnnounceFlags msg)
     }
 }
 
-bool PlayerbotAI::IsMoving()
-{
-    return (m_bot->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE ? false : true);
-}
-
 // some possible things to use in AI
 // GetRandomContactPoint
 // GetPower, GetMaxPower
@@ -4999,6 +5021,9 @@ bool PlayerbotAI::IsMoving()
 
 void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
 {
+    if (GetClassAI()->GetWaitUntil() <= CurrentTime())
+        GetClassAI()->ClearWait();
+
     if (CurrentTime() < m_ignoreAIUpdatesUntilTime)
         return;
 
@@ -5285,7 +5310,7 @@ void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
     }
 
     // if commanded to follow master and not already following master then follow master
-    if (!m_bot->isInCombat() && !IsMoving())
+    if (!m_bot->isInCombat() && !m_bot->IsMoving())
         return MovementReset();
 
     // do class specific non combat actions
