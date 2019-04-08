@@ -204,7 +204,7 @@ struct mob_illidari_councilAI : public ScriptedAI
         m_bEventBegun = false;
         m_bEventEnd   = false;
 
-        m_uiEquivalencyTimer = urand(2000, 3000);
+        m_uiEquivalencyTimer = urand(20000, 30000);
     }
 
     void AttackStart(Unit* /*pWho*/) override { }
@@ -364,11 +364,11 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
 
     void Reset() override
     {
-        m_uiConsecrationTimer       = 40000;
-        m_uiHammerOfJusticeTimer    = 10000;
-        m_uiSealTimer               = 40000;
-        m_uiAuraTimer               = 90000;
-        m_uiBlessingTimer           = 60000;
+        m_uiConsecrationTimer       = 80000;
+        m_uiHammerOfJusticeTimer    = 40000;
+        m_uiSealTimer               = 80000;
+        m_uiAuraTimer               = 160000;
+        m_uiBlessingTimer           = 120000;
         m_uiJudgmentTimer           = 0;
     }
 
@@ -394,7 +394,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
             if (Unit* pTarget = DoSelectLowestHpFriendly(80.0f))
             {
                 if (DoCastSpellIfCan(pTarget, urand(0, 1) ? SPELL_BLESS_SPELLWARD : SPELL_BLESS_PROTECTION) == CAST_OK)
-                    m_uiBlessingTimer = 60000;
+                    m_uiBlessingTimer = 120000;
             }
         }
         else
@@ -403,7 +403,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         if (m_uiConsecrationTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_CONSECRATION) == CAST_OK)
-                m_uiConsecrationTimer = urand(10000, 15000);
+                m_uiConsecrationTimer = urand(40000, 15000);
         }
         else
             m_uiConsecrationTimer -= uiDiff;
@@ -413,7 +413,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_HAMMER_OF_JUSTICE, SELECT_FLAG_PLAYER | SELECT_FLAG_NOT_IN_MELEE_RANGE))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_HAMMER_OF_JUSTICE) == CAST_OK)
-                    m_uiHammerOfJusticeTimer = 20000;
+                    m_uiHammerOfJusticeTimer = 40000;
             }
         }
         else
@@ -423,10 +423,10 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         {
             if (DoCastSpellIfCan(m_creature, urand(0, 1) ? SPELL_SEAL_OF_COMMAND : SPELL_SEAL_OF_BLOOD) == CAST_OK)
             {
-                m_uiSealTimer = 40000;
+                m_uiSealTimer = 80000;
 
                 if (urand(0, 1))
-                    m_uiJudgmentTimer = urand(4000, 7000);
+                    m_uiJudgmentTimer = urand(8000, 12000);
             }
         }
         else
@@ -435,7 +435,7 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         if (m_uiAuraTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, urand(0, 1) ? SPELL_DEVOTION_AURA : SPELL_CHROMATIC_AURA) == CAST_OK)
-                m_uiAuraTimer = 90000;
+                m_uiAuraTimer = 180000;
         }
         else
             m_uiAuraTimer -= uiDiff;
@@ -471,11 +471,11 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
 
     void Reset() override
     {
-        m_uiBlizzardTimer           = urand(10000, 20000);
-        m_uiFlamestrikeTimer        = urand(10000, 20000);
-        m_uiArcaneBoltTimer         = 3000;
-        m_uiDampenMagicTimer        = 2000;
-        m_uiArcaneExplosionTimer    = 13000;
+        m_uiBlizzardTimer           = urand(40000, 80000);
+        m_uiFlamestrikeTimer        = urand(40000, 80000);
+        m_uiArcaneBoltTimer         = 9000;
+        m_uiDampenMagicTimer        = 4000;
+        m_uiArcaneExplosionTimer    = 26000;
 
         m_attackDistance = 20.0f;
     }
@@ -508,7 +508,7 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
         if (m_uiArcaneExplosionTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_ARCANE_EXPLOSION) == CAST_OK)
-                m_uiArcaneExplosionTimer = urand(5000, 15000);
+                m_uiArcaneExplosionTimer = urand(10000, 15000);
         }
         else
             m_uiArcaneExplosionTimer -= uiDiff;
@@ -516,7 +516,7 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
         if (m_uiArcaneBoltTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_BOLT) == CAST_OK)
-                m_uiArcaneBoltTimer = 3000;
+                m_uiArcaneBoltTimer = 6000;
         }
         else
             m_uiArcaneBoltTimer -= uiDiff;
@@ -527,8 +527,8 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_BLIZZARD) == CAST_OK)
                 {
-                    m_uiBlizzardTimer = urand(5000, 15000);
-                    m_uiFlamestrikeTimer += 5000;
+                    m_uiBlizzardTimer = urand(10000, 15000);
+                    m_uiFlamestrikeTimer += 10000;
                 }
             }
         }
@@ -541,8 +541,8 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_FLAMESTRIKE) == CAST_OK)
                 {
-                    m_uiFlamestrikeTimer = urand(5000, 15000);
-                    m_uiBlizzardTimer += 5000;
+                    m_uiFlamestrikeTimer = urand(10000, 15000);
+                    m_uiBlizzardTimer += 10000;
                 }
             }
         }
@@ -566,9 +566,9 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
 
     void Reset() override
     {
-        m_uiEmpoweredSmiteTimer     = 10000;
-        m_uiCircleOfHealingTimer    = 20000;
-        m_uiDivineWrathTimer        = 5000;
+        m_uiEmpoweredSmiteTimer     = 40000;
+        m_uiCircleOfHealingTimer    = 80000;
+        m_uiDivineWrathTimer        = 10000;
         m_uiReflectiveShieldTimer   = 0;
 
         m_attackDistance = 20.0f;
@@ -596,7 +596,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_EMPOWERED_SMITE) == CAST_OK)
-                    m_uiEmpoweredSmiteTimer = urand(5000, 15000);
+                    m_uiEmpoweredSmiteTimer = urand(10000, 15000);
             }
         }
         else
@@ -605,7 +605,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         if (m_uiCircleOfHealingTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_CIRCLE_OF_HEALING) == CAST_OK)
-                m_uiCircleOfHealingTimer = 20000;
+                m_uiCircleOfHealingTimer = 60000;
         }
         else
             m_uiCircleOfHealingTimer -= uiDiff;
@@ -615,7 +615,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_DIVINE_WRATH) == CAST_OK)
-                    m_uiDivineWrathTimer = urand(2000, 5000);
+                    m_uiDivineWrathTimer = urand(4000, 8000);
             }
         }
         else
@@ -624,7 +624,7 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         if (m_uiReflectiveShieldTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_REFLECTIVE_SHIELD) == CAST_OK)
-                m_uiReflectiveShieldTimer = urand(30000, 40000);
+                m_uiReflectiveShieldTimer = urand(60000, 80000);
         }
         else
             m_uiReflectiveShieldTimer -= uiDiff;
@@ -648,9 +648,9 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
 
     void Reset() override
     {
-        m_uiDeadlyPoisonTimer   = 1000;
-        m_uiVanishTimer         = urand(30000, 40000);
-        m_uiEnvenomTimer        = 5000;
+        m_uiDeadlyPoisonTimer   = 4000;
+        m_uiVanishTimer         = urand(60000, 80000);
+        m_uiEnvenomTimer        = 10000;
         m_uiVanishEndtimer      = 0;
     }
 
@@ -699,7 +699,7 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         if (m_uiDeadlyPoisonTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DEADLY_POISON) == CAST_OK)
-                m_uiDeadlyPoisonTimer = urand(4000, 7000);
+                m_uiDeadlyPoisonTimer = urand(8000, 14000);
         }
         else
             m_uiDeadlyPoisonTimer -= uiDiff;
@@ -707,7 +707,7 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         if (m_uiEnvenomTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ENVENOM) == CAST_OK)
-                m_uiEnvenomTimer = 5000;
+                m_uiEnvenomTimer = 10000;
         }
         else
             m_uiEnvenomTimer -= uiDiff;
@@ -716,8 +716,8 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         {
             if (DoCastSpellIfCan(m_creature, SPELL_VANISH) == CAST_OK)
             {
-                m_uiVanishTimer = urand(30000, 40000);
-                m_uiVanishEndtimer = 1000;
+                m_uiVanishTimer = urand(60000, 80000);
+                m_uiVanishEndtimer = 4000;
             }
         }
         else
