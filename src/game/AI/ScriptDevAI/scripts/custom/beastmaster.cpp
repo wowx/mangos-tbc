@@ -109,7 +109,7 @@ void CreatePet(Player* player, Creature* creature, uint32 entry)
     player->PetSpellInitialize();
     // pet->SetTP(350);
     pet->SetTP(player->getLevel() * 5);
-    pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+    pet->SavePetToDB(PET_SAVE_AS_CURRENT, player);
 
     // make sure player has all training spells
     player->learnSpell(27348, true); // bite
