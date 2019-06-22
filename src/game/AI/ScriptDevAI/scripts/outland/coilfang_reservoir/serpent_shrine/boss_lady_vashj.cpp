@@ -514,7 +514,7 @@ struct boss_lady_vashjAI : public ScriptedAI
                 m_triggerGuids.push_back(m_triggerGuidsWest);
                 m_triggerGuids.push_back(m_triggerGuidsEast);
             }
-
+        }
             m_uiPhase = PHASE_2;
 
             m_creature->SetImmobilizedState(true);
