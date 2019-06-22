@@ -509,7 +509,7 @@ struct boss_lady_vashjAI : public ScriptedAI
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
 
             SetCombatScriptStatus(false);
-        }
+        }/*
         else if (uiPointId == POINT_MOVE_DISTANCE)
         {
             SetCombatScriptStatus(false);
@@ -520,7 +520,7 @@ struct boss_lady_vashjAI : public ScriptedAI
             m_shootTimer = 5000;
             m_actionReadyStatus[VASHJ_ACTION_SHOOT] = false;
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHOOT);       
-        }
+        }*/
     }
 
     void SummonedMovementInform(Creature* summoned, uint32 motionType, uint32 data) override
