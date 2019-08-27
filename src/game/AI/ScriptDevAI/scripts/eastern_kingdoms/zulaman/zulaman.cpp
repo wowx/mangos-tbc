@@ -302,7 +302,7 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
                 if (m_auiEncounter[TYPE_RUN_EVENT_TIME])
                     SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                 else
-                    SetData(TYPE_RUN_EVENT_TIME, 20);   // 20 Minutes as default time
+                    SetData(TYPE_RUN_EVENT_TIME, 5);   // 20 Minutes as default time
                 DoUpdateWorldState(WORLD_STATE_ZUL_AMAN_EVENT_RUN_IS_ACTIVE, 1);
             }
             if (uiData == FAIL)
@@ -333,7 +333,7 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
             {
                 if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                 {
-                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 10; // Add 10 minutes
+                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 5; // Add 10 minutes
                     SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                     DoChestEvent(INDEX_AKILZON);
                 }
@@ -345,7 +345,7 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
             {
                 if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                 {
-                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 15; // Add 15 minutes
+                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 10; // Add 15 minutes
                     SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                     DoChestEvent(INDEX_NALORAKK);
                 }
