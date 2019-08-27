@@ -1003,7 +1003,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 19869:                                 // Dragon Orb
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER && !unitTarget->HasAura(23958))
-                        unitTarget->CastSpell(unitTarget, 19832, TRIGGERED_OLD_TRIGGERED);
+                        unitTarget->CastSpell(nullptr, 19832, TRIGGERED_OLD_TRIGGERED);
 
                     return;
                 }
@@ -1731,6 +1731,50 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->DealDamage(unitTarget, unitTarget->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
                     return;
                 }
+                case 34094:                                 // Power of Arrazius
+                {
+                    if (!unitTarget)
+                        return;
+
+                    uint32 triggered_spell_id = 0;
+                    AIEventType triggered_event = AI_EVENT_CUSTOM_A;
+
+                    // Feeble Weapons: Warrior, Rogue, Hunter
+                    // Doubting Mind: Paladin, Shaman, Druid
+                    // Chilling Words: Mage, Warlock, Priest
+                    switch (unitTarget->getClass())
+                    {
+                        case CLASS_WARRIOR:
+                        case CLASS_ROGUE:
+                        case CLASS_HUNTER:
+                            triggered_spell_id = 34088;
+                            triggered_event = AI_EVENT_CUSTOM_EVENTAI_A;
+                            break;
+                        case CLASS_PALADIN:
+                        case CLASS_SHAMAN:
+                        case CLASS_DRUID:
+                            triggered_spell_id = 34089;
+                            triggered_event = AI_EVENT_CUSTOM_EVENTAI_B;
+                            break;
+                        case CLASS_MAGE:
+                        case CLASS_WARLOCK:
+                        case CLASS_PRIEST:
+                            triggered_spell_id = 34087;
+                            triggered_event = AI_EVENT_CUSTOM_EVENTAI_C;
+                            break;
+                        default:
+                            return;
+                    }
+
+                    // This spell has lower range than the main spell,
+                    // and the spell might fail because of that; this is working as
+                    // intended
+                    m_caster->CastSpell(unitTarget, triggered_spell_id, TRIGGERED_OLD_TRIGGERED);
+                    if (m_caster->IsCreature())
+                        m_caster->AI()->SendAIEvent(triggered_event, unitTarget, m_caster);
+
+                    return;
+                }
                 case 34803:                                 // Summon Reinforcements
                 {
                     m_caster->CastSpell(m_caster, 34810, TRIGGERED_OLD_TRIGGERED); // Summon 20083 behind of the caster
@@ -1969,6 +2013,9 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     ((Creature*)unitTarget)->ForcedDespawn();
                     return;
                 }
+                case 39581:                                 // Storm Blink
+                    m_caster->CastSpell(m_caster, 39582, TRIGGERED_OLD_TRIGGERED);
+                    return;
                 case 39635:                                 // Throw Glaive (first)
                 case 39849:                                 // Throw Glaive (second)
                 {
@@ -2195,6 +2242,17 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!possibleTargets.empty())
                         m_caster->CastSpell(possibleTargets[urand(0, possibleTargets.size() - 1)], 43501, TRIGGERED_NONE);
 
+                    return;
+                }
+                case 43647:                                 // Cosmetic - Spear Throw
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    unitTarget->SetFlag(UNIT_FIELD_FLAGS, 33587456);
+                    unitTarget->SetDisplayId(22347);
+                    unitTarget->CastSpell(unitTarget, 23973, TRIGGERED_OLD_TRIGGERED);
+                    unitTarget->SetStandState(UNIT_STAND_STATE_DEAD);
                     return;
                 }
                 // Demon Broiled Surprise
@@ -2547,6 +2605,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     // Blink
                     if (unitTarget)
                         m_caster->CastSpell(unitTarget, 38643, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
+                case 41060:                                 // Return
+                {
+                    if (!unitTarget || m_caster->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    ((Creature*)m_caster)->ForcedDespawn(2500);
                     return;
                 }
             }
@@ -6784,6 +6850,18 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(unitTarget, 33684, TRIGGERED_OLD_TRIGGERED);
                     return;
                 }
+                case 34098:                                 // ClearAllDebuffs
+                {
+                    auto holderMap = m_caster->GetSpellAuraHolderMap();
+                    for (auto holderPair : holderMap)
+                    {
+                        if (!holderPair.second->IsPositive() && !holderPair.second->IsPassive())
+                        {
+                            m_caster->RemoveAurasDueToSpell(holderPair.second->GetId());
+                        }
+                    }
+                    return;
+                }
                 case 34653:                                 // SPELL_FIREBALL_GROUND
                 case 36920:                                 // SPELL_FIREBALL_GROUND_H
                 case 33793:                                 // SPELL_FIREBALL_RANDOM
@@ -7076,6 +7154,23 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 40887:                                 // Assist
+                {
+                    if (!unitTarget || !unitTarget->isInCombat())
+                        return;
+
+                    unitTarget->CastSpell(m_caster, 40892, TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
+                case 40892:                                 // Fixate
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    m_caster->AI()->SendAIEvent(AI_EVENT_CUSTOM_EVENTAI_A, unitTarget, m_caster);
+                    unitTarget->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), TRIGGERED_OLD_TRIGGERED);
+                    return;
+                }
                 case 41055:                                 // Copy Weapon
                 {
                     if (m_caster->GetTypeId() != TYPEID_UNIT || !unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -7106,6 +7201,33 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     unitTarget->CastSpell(unitTarget, 41131, TRIGGERED_OLD_TRIGGERED);
                     break;
+                }
+                case 41195:                                 // Whirlwind
+                {
+                    if (m_caster->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    Unit* target = ((Creature *)m_caster)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_PLAYER);
+                    if (target)
+                    {
+                        ThreatList const& threatList = m_caster->getThreatManager().getThreatList();
+                        for (auto i : threatList)
+                            if (Unit* Temp = m_caster->GetMap()->GetUnit(i->getUnitGuid()))
+                                m_caster->getThreatManager().modifyThreatPercent(Temp, -100);
+
+                        m_caster->AddThreat(target, 100000.f);
+                    }
+
+                    return;
+                }
+                case 42179:                                 // Summon Amani'shi Sentries
+                {
+                    if (!unitTarget)
+                        return;
+
+                    uint32 spells[4] = { 42180, 42181, 42182, 42183 };
+                    unitTarget->CastSpell(unitTarget, spells[urand(0, 3)], TRIGGERED_OLD_TRIGGERED);
+                    return;
                 }
                 case 42281:                                 // Sprouting
                 {
@@ -7347,6 +7469,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     for (uint8 i = 0; i < 10; ++i)
                         m_caster->CastSpell(m_caster, 41159, TRIGGERED_OLD_TRIGGERED);
                     break;
+                }
+                case 40081:                                 // Free Friend
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->RemoveAurasAtMechanicImmunity(IMMUNE_TO_INCAPACITATE_MASK, m_spellInfo->Id);
+                    return;
                 }
             }
             break;

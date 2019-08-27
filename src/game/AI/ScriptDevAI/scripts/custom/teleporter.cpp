@@ -95,6 +95,7 @@ void SendDefaultMenu_Teleporter(Player *player, Creature *_Creature, uint32 acti
         // T2/T1
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Inv_misc_head_dragon_red:30:30:-18:0|t Onyxia's Lair", GOSSIP_SENDER_MAIN, 2012);
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Inv_misc_head_dragon_red:30:30:-18:0|t Blackrock Mountain", GOSSIP_SENDER_MAIN, 2013);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Inv_misc_head_dragon_red:30:30:-18:0|t Blackwing Lair", GOSSIP_SENDER_MAIN, 2016);
         // Other 60lvl
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Inv_misc_head_dragon_01:30:30:-18:0|t Ahn' Qiraj", GOSSIP_SENDER_MAIN, 2014);
         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Inv_misc_head_dragon_01:30:30:-18:0|t Zul'Gurub", GOSSIP_SENDER_MAIN, 2015);
@@ -335,6 +336,11 @@ void SendDefaultMenu_Teleporter(Player *player, Creature *_Creature, uint32 acti
     case 2015: // Zul' Gurub
         player->CLOSE_GOSSIP_MENU();
         player->TeleportTo(0, -11916.2f, -1205.27f, 92.28f, 4.732f);
+        break;
+
+    case 2016: // BWL
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(469, -7664.9f, -1102.42f, 399.68f, 3.884f);
         break;
 
         // Arenas

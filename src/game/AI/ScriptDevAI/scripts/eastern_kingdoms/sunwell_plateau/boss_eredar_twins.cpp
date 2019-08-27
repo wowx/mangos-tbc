@@ -440,7 +440,7 @@ struct boss_sacrolashAI : public ScriptedAI
         if (m_uiSummonShadowImage < uiDiff)
         {
             // Summon 3 shadow images at the boss position
-            for (uint8 i = 0; i < 3; ++i)
+            for (uint8 i = 0; i < 1; ++i)
                 m_creature->SummonCreature(NPC_SHADOW_IMAGE, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSPAWN_CORPSE_TIMED_DESPAWN, 3000);
 
             m_uiSummonShadowImage = urand(10000, 12000);
@@ -524,7 +524,7 @@ struct npc_shadow_imageAI : public ScriptedAI
                         {
                             ++m_uiDarkStrikes;
                             // kill itself after 2 strikes
-                            if (m_uiDarkStrikes == 2)
+                            if (m_uiDarkStrikes == 1)
                                 m_uiSuicideTimer = 1000;
                             else
                                 m_uiAbilityTimer = 1000;

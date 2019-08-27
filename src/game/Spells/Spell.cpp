@@ -5922,7 +5922,7 @@ SpellCastResult Spell::CheckRange(bool strict)
     if (!strict && m_casttime == 0)
         return SPELL_CAST_OK;
 
-    Unit* target = m_targets.getUnitTarget();
+    WorldObject* target = m_targets.getUnitTarget();
 
     float minRange, maxRange;
     std::tie(minRange, maxRange) = GetMinMaxRange(strict);
@@ -5931,6 +5931,9 @@ SpellCastResult Spell::CheckRange(bool strict)
     if (SpellRangeEntry const* spellRange = sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex))
         if ((spellRange->Flags & SPELL_RANGE_FLAG_MELEE) == 0 && !strict)
             maxRange += std::min(3.f, maxRange * 0.1f); // 10% but no more than MAX_SPELL_RANGE_TOLERANCE
+
+    if (!target && m_spellInfo->Targets & (TARGET_FLAG_LOCKED | TARGET_FLAG_GAMEOBJECT))
+        target = m_targets.getGOTarget();
 
     if (target && target != m_caster)
     {
@@ -7609,6 +7612,11 @@ SpellCastResult Spell::OnCheckCast(bool strict)
                 return SPELL_FAILED_TOO_MANY_OF_ITEM;
             break;
         }
+        case 43732: // Remove Amani Curse - should only be usable on Forest Frog
+            if (ObjectGuid target = m_targets.getUnitTargetGuid())
+                if (target.GetEntry() != 24396)
+                    return SPELL_FAILED_BAD_TARGETS;
+            break;
     }
 
     return SPELL_CAST_OK;

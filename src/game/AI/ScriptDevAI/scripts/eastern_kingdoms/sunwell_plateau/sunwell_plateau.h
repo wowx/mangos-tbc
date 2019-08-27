@@ -7,14 +7,14 @@
 
 enum
 {
-    MAX_ENCOUNTER               = 5,
+    MAX_ENCOUNTER               = 4,
 
     TYPE_KALECGOS               = 6,
     TYPE_BRUTALLUS              = 0,
     TYPE_FELMYST                = 1,
-    TYPE_EREDAR_TWINS           = 2,
-    TYPE_MURU                   = 3,
-    TYPE_KILJAEDEN              = 4,
+    TYPE_EREDAR_TWINS           = 5,
+    TYPE_MURU                   = 2,
+    TYPE_KILJAEDEN              = 3,
 
     NPC_KALECGOS_DRAGON         = 24850,            // kalecgos blue dragon hostile
     NPC_KALECGOS_HUMAN          = 24891,            // kalecgos human form in spectral realm
