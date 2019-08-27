@@ -27,7 +27,7 @@ EndScriptData
 #include "Globals/ObjectMgr.h"
 #include "GameEvents/GameEventMgr.h"
 #include "Entities/TemporarySpawn.h"
-#include "AI/ScriptDevAI/base/TimerAI.h"
+#include "AI/ScriptDevAI/base/CombatAI.h"
 
 /* ContentData
 npc_air_force_bots       80%    support for misc (invisible) guard bots in areas where player allowed to fly. Summon guards after a preset time if tagged by spell
@@ -1558,7 +1558,7 @@ struct npc_aoe_damage_triggerAI : public Scripted_NoMovementAI
 
     void AttackStart(Unit* /*pWho*/) override { }
     void MoveInLineOfSight(Unit* /*pWho*/) override { }
-    void UpdateAI(const uint32 uiDiff) override {}
+    void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
 
 UnitAI* GetAI_npc_aoe_damage_trigger(Creature* pCreature)
@@ -1587,7 +1587,7 @@ struct npc_the_cleanerAI : public ScriptedAI
         m_uiDespawnTimer = 3000;
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_CLEANER_AGGRO, m_creature);
     }
@@ -1821,24 +1821,13 @@ enum RayActions
     RAY_ACTION_MAX,
 };
 
-struct npc_nether_rayAI : public ScriptedAI, public CombatActions
+struct npc_nether_rayAI : public CombatAI
 {
-    npc_nether_rayAI(Creature* creature) : ScriptedAI(creature), CombatActions(RAY_ACTION_MAX)
+    npc_nether_rayAI(Creature* creature) : CombatAI(creature, RAY_ACTION_MAX)
     {
-        AddCombatAction(RAY_ACTION_DRAIN_MANA, 0u);
-        AddCombatAction(RAY_ACTION_TAIL_STING, 0u);
+        AddCombatAction(RAY_ACTION_DRAIN_MANA, 2000u);
+        AddCombatAction(RAY_ACTION_TAIL_STING, 2000u);
         AddCombatAction(RAY_ACTION_NETHER_SHOCK, 0u);
-    }
-
-    uint32 GetInitialActionTimer(RayActions id)
-    {
-        switch (id)
-        {
-            case RAY_ACTION_DRAIN_MANA: return 2000;
-            case RAY_ACTION_TAIL_STING: return 2000;
-            case RAY_ACTION_NETHER_SHOCK: return 0;
-            default: return 0;
-        }
     }
 
     uint32 GetSubsequentActionTimer(RayActions id)
@@ -1852,59 +1841,41 @@ struct npc_nether_rayAI : public ScriptedAI, public CombatActions
         }
     }
 
-    void Reset() override
+    void OnSpellCooldownAdded(SpellEntry const* spellInfo) // spells should only reset their action timer on success
     {
-        for (uint32 i = 0; i < RAY_ACTION_MAX; ++i)
-            SetActionReadyStatus(i, false);
-
-        ResetTimer(RAY_ACTION_DRAIN_MANA, GetInitialActionTimer(RAY_ACTION_DRAIN_MANA));
-        ResetTimer(RAY_ACTION_TAIL_STING, GetInitialActionTimer(RAY_ACTION_TAIL_STING));
-        ResetTimer(RAY_ACTION_NETHER_SHOCK, GetInitialActionTimer(RAY_ACTION_NETHER_SHOCK));
+        switch (spellInfo->Id)
+        {
+            case SPELL_DRAIN_MANA:
+                ResetCombatAction(RAY_ACTION_DRAIN_MANA, GetSubsequentActionTimer(RayActions(RAY_ACTION_DRAIN_MANA)));
+                break;
+            case SPELL_TAIL_STING:
+                ResetCombatAction(RAY_ACTION_TAIL_STING, GetSubsequentActionTimer(RayActions(RAY_ACTION_TAIL_STING)));
+                break;
+            case SPELL_NETHER_SHOCK:
+                ResetCombatAction(RAY_ACTION_NETHER_SHOCK, GetSubsequentActionTimer(RayActions(RAY_ACTION_NETHER_SHOCK)));
+                break;
+        }
     }
 
-    void ExecuteActions() override
+    void ExecuteAction(uint32 action) override
     {
-        if (!CanExecuteCombatAction())
-            return;
-
-        for (uint32 i = 0; i < RAY_ACTION_MAX; ++i)
+        switch (action)
         {
-            if (!GetActionReadyStatus(i))
-                continue;
-
-            switch (i)
-            {
-                case RAY_ACTION_DRAIN_MANA:
-                    if (!m_creature->getVictim() || !m_creature->getVictim()->HasMana())
-                        continue;
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_DRAIN_MANA) == CAST_OK)
-                    {
-                        SetActionReadyStatus(i, false);
-                        ResetTimer(i, GetSubsequentActionTimer(RayActions(i)));
-                        return;
-                    }
-                    continue;
-                case RAY_ACTION_TAIL_STING:
-                    if (!m_creature->getVictim() || m_creature->getVictim()->HasMana())
-                        continue;
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_TAIL_STING) == CAST_OK)
-                    {
-                        SetActionReadyStatus(i, false);
-                        ResetTimer(i, GetSubsequentActionTimer(RayActions(i)));
-                        return;
-                    }
-                    continue;
-                case RAY_ACTION_NETHER_SHOCK:
-                    if (!m_creature->getVictim())
-                        continue;
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_NETHER_SHOCK) == CAST_OK)
-                    {
-                        SetActionReadyStatus(i, false);
-                        ResetTimer(i, GetSubsequentActionTimer(RayActions(i)));
-                        return;
-                    }
-                    continue;
-            }
+            case RAY_ACTION_DRAIN_MANA:
+                if (!m_creature->getVictim() || !m_creature->getVictim()->HasMana())
+                    return;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_DRAIN_MANA);
+                return;
+            case RAY_ACTION_TAIL_STING:
+                if (!m_creature->getVictim() || m_creature->getVictim()->HasMana())
+                    return;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_TAIL_STING);
+                return;
+            case RAY_ACTION_NETHER_SHOCK:
+                if (!m_creature->getVictim())
+                    return;
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_NETHER_SHOCK);
+                return;
         }
     }
 };
@@ -1936,10 +1907,10 @@ struct npc_mojoAI : public ScriptedAI
     {
         heartsResetTimer = 15000;
         hearts = false;
-        m_creature->GetMotionMaster()->MoveFollow(m_creature->GetOwner(), 2.0f, M_PI / 2.0f);
+        m_creature->GetMotionMaster()->MoveFollow(m_creature->GetOwner(), 2.0f, M_PI_F / 2.0f);
     }
 
-    void SpellHit(Unit* caster, const SpellEntry* spell) override
+    void SpellHit(Unit* /*caster*/, const SpellEntry* spell) override
     {
         if (spell->Id == SPELL_HEARTS)
         {
@@ -1956,7 +1927,7 @@ struct npc_mojoAI : public ScriptedAI
             {
                 m_creature->RemoveAurasDueToSpell(SPELL_HEARTS);
                 hearts = false;
-                m_creature->GetMotionMaster()->MoveFollow(m_creature->GetOwner(), 2.0f, M_PI / 2.0f);
+                m_creature->GetMotionMaster()->MoveFollow(m_creature->GetOwner(), 2.0f, M_PI_F / 2.0f);
                 m_creature->SetTarget(nullptr);
             }
             else

@@ -84,12 +84,8 @@ float World::m_MaxVisibleDistanceOnContinents = DEFAULT_VISIBILITY_DISTANCE;
 float World::m_MaxVisibleDistanceInInstances  = DEFAULT_VISIBILITY_INSTANCE;
 float World::m_MaxVisibleDistanceInBGArenas   = DEFAULT_VISIBILITY_BGARENAS;
 
-float World::m_MaxVisibleDistanceInFlight     = DEFAULT_VISIBILITY_DISTANCE;
-float World::m_VisibleUnitGreyDistance        = 0;
-float World::m_VisibleObjectGreyDistance      = 0;
-
-float  World::m_relocation_lower_limit_sq     = 10.f * 10.f;
-uint32 World::m_relocation_ai_notify_delay    = 1000u;
+float  World::m_relocation_lower_limit_sq = 10.f * 10.f;
+uint32 World::m_relocation_ai_notify_delay = 1000u;
 
 uint32 World::m_currentMSTime = 0;
 TimePoint World::m_currentTime = TimePoint();
@@ -711,65 +707,45 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_BOOL_PET_ATTACK_FROM_BEHIND,     "PetAttackFromBehind", true);
 
     m_relocation_ai_notify_delay = sConfig.GetIntDefault("Visibility.AIRelocationNotifyDelay", 1000u);
-    m_relocation_lower_limit_sq  = pow(sConfig.GetFloatDefault("Visibility.RelocationLowerLimit", 10), 2);
+    m_relocation_lower_limit_sq = pow(sConfig.GetFloatDefault("Visibility.RelocationLowerLimit", 10), 2);
 
-    m_VisibleUnitGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Unit", 1);
-    if (m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
-    {
-        sLog.outError("Visibility.Distance.Grey.Unit can't be greater %f", MAX_VISIBILITY_DISTANCE);
-        m_VisibleUnitGreyDistance = MAX_VISIBILITY_DISTANCE;
-    }
-    m_VisibleObjectGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Object", 10);
-    if (m_VisibleObjectGreyDistance >  MAX_VISIBILITY_DISTANCE)
-    {
-        sLog.outError("Visibility.Distance.Grey.Object can't be greater %f", MAX_VISIBILITY_DISTANCE);
-        m_VisibleObjectGreyDistance = MAX_VISIBILITY_DISTANCE;
-    }
-
-    // visibility on continents
+    // Visibility on Continents
     m_MaxVisibleDistanceOnContinents      = sConfig.GetFloatDefault("Visibility.Distance.Continents",     DEFAULT_VISIBILITY_DISTANCE);
     if (m_MaxVisibleDistanceOnContinents < 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.Continents can't be less max aggro radius %f", 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceOnContinents = 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if (m_MaxVisibleDistanceOnContinents + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceOnContinents >  MAX_VISIBILITY_DISTANCE)
     {
-        sLog.outError("Visibility.Distance.Continents can't be greater %f", MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
-        m_MaxVisibleDistanceOnContinents = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
+        sLog.outError("Visibility.Distance.Continents can't be greater %f", MAX_VISIBILITY_DISTANCE);
+        m_MaxVisibleDistanceOnContinents = MAX_VISIBILITY_DISTANCE;
     }
 
-    // visibility in instances
+    // Visibility in Instances
     m_MaxVisibleDistanceInInstances        = sConfig.GetFloatDefault("Visibility.Distance.Instances",       DEFAULT_VISIBILITY_INSTANCE);
     if (m_MaxVisibleDistanceInInstances < 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.Instances can't be less max aggro radius %f", 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceInInstances = 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if (m_MaxVisibleDistanceInInstances + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceInInstances >  MAX_VISIBILITY_DISTANCE)
     {
-        sLog.outError("Visibility.Distance.Instances can't be greater %f", MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
-        m_MaxVisibleDistanceInInstances = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
+        sLog.outError("Visibility.Distance.Instances can't be greater %f", MAX_VISIBILITY_DISTANCE);
+        m_MaxVisibleDistanceInInstances = MAX_VISIBILITY_DISTANCE;
     }
 
-    // visibility in BG/Arenas
+    // Visibility in BG/Arenas
     m_MaxVisibleDistanceInBGArenas        = sConfig.GetFloatDefault("Visibility.Distance.BGArenas",       DEFAULT_VISIBILITY_BGARENAS);
     if (m_MaxVisibleDistanceInBGArenas < 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.BGArenas can't be less max aggro radius %f", 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceInBGArenas = 45 * getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if (m_MaxVisibleDistanceInBGArenas + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceInBGArenas >  MAX_VISIBILITY_DISTANCE)
     {
-        sLog.outError("Visibility.Distance.BGArenas can't be greater %f", MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
-        m_MaxVisibleDistanceInBGArenas = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
-    }
-
-    m_MaxVisibleDistanceInFlight    = sConfig.GetFloatDefault("Visibility.Distance.InFlight",      DEFAULT_VISIBILITY_DISTANCE);
-    if (m_MaxVisibleDistanceInFlight + m_VisibleObjectGreyDistance > MAX_VISIBILITY_DISTANCE)
-    {
-        sLog.outError("Visibility.Distance.InFlight can't be greater %f", MAX_VISIBILITY_DISTANCE - m_VisibleObjectGreyDistance);
-        m_MaxVisibleDistanceInFlight = MAX_VISIBILITY_DISTANCE - m_VisibleObjectGreyDistance;
+        sLog.outError("Visibility.Distance.BGArenas can't be greater %f", MAX_VISIBILITY_DISTANCE);
+        m_MaxVisibleDistanceInBGArenas = MAX_VISIBILITY_DISTANCE;
     }
 
     ///- Load the CharDelete related config options
@@ -836,7 +812,7 @@ void World::SetInitialWorldSettings()
     srand((unsigned int)time(nullptr));
 
     ///- Time server startup
-    uint32 uStartTime = WorldTimer::getMSTime();
+    uint32 startTime = WorldTimer::getMSTime();
 
     ///- Initialize detour memory management
     dtAllocSetCustom(dtCustomAlloc, dtCustomFree);
@@ -989,6 +965,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Loading Creature template spells...");
     sObjectMgr.LoadCreatureTemplateSpells();
+
+    sLog.outString("Loading Creature cooldowns...");
+    sObjectMgr.LoadCreatureCooldowns();
 
     sLog.outString("Loading Creature Model for race...");   // must be after creature templates
     sObjectMgr.LoadCreatureModelRace();
@@ -1354,6 +1333,10 @@ void World::SetInitialWorldSettings()
     sAuctionBot.Initialize();
     sLog.outString();
 
+    sLog.outString("Loading WorldState");
+    sWorldState.Load();
+    sLog.outString();
+
 #ifdef BUILD_PLAYERBOT
     PlayerbotMgr::SetInitialWorldSettings();
 #endif
@@ -1362,7 +1345,7 @@ void World::SetInitialWorldSettings()
     sLog.outString("---------------------------------------");
     sLog.outString();
 
-    uint32 uStartInterval = WorldTimer::getMSTimeDiff(uStartTime, WorldTimer::getMSTime());
+    uint32 uStartInterval = WorldTimer::getMSTimeDiff(startTime, WorldTimer::getMSTime());
     sLog.outString("SERVER STARTUP TIME: %i minutes %i seconds", uStartInterval / 60000, (uStartInterval % 60000) / 1000);
     sLog.outString();
 }
@@ -1901,7 +1884,7 @@ void World::ShutdownCancel()
     DEBUG_LOG("Server %s cancelled.", (m_ShutdownMask & SHUTDOWN_MASK_RESTART ? "restart" : "shutdown"));
 }
 
-void World::UpdateSessions(uint32 /*diff*/)
+void World::UpdateSessions(uint32 diff)
 {
     ///- Add new sessions
     {
@@ -1921,7 +1904,7 @@ void World::UpdateSessions(uint32 /*diff*/)
         WorldSessionFilter updater(pSession);
 
         // if WorldSession::Update fails, it means that the session should be destroyed
-        if (!pSession->Update(updater))
+        if (!pSession->Update(diff, updater))
         {
             RemoveQueuedSession(pSession);
             itr = m_sessions.erase(itr);
@@ -2209,6 +2192,7 @@ void World::ResetWeeklyQuests()
     CharacterDatabase.PExecute("UPDATE saved_variables SET NextWeeklyQuestResetTime = '" UI64FMTD "'", uint64(m_NextWeeklyQuestReset));
 
     GenerateEventGroupEvents(false, true, true); // generate weeklies and save to DB
+    sGameEventMgr.WeeklyEventTimerRecalculation();
 }
 
 void World::ResetMonthlyQuests()

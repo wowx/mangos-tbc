@@ -123,7 +123,7 @@ SpellTargetInfo SpellTargetInfoTable[MAX_SPELL_TARGETS] =
     /*[90]*/    { "TARGET_UNIT_CASTER_COMPANION",                         TARGET_TYPE_UNIT,             TARGET_NEUTRAL,    TARGET_ENUMERATOR_SINGLE },
     /*[91]*/    { "TARGET_LOCATION_RANDOM_CIRCUMFERENCE",                 TARGET_TYPE_LOCATION_DEST                                                 },
     /*[92]*/    { "TARGET_UNIT_CASTER_SUMMONER",                          TARGET_TYPE_UNIT,             TARGET_NEUTRAL,    TARGET_ENUMERATOR_SINGLE },
-    /*[93]*/    { "TARGET_CORPSE_ENEMY_NEAR_CASTER_NYI",                  TARGET_TYPE_CORPSE,           TARGET_HARMFUL,    TARGET_ENUMERATOR_CHAIN  },
+    /*[93]*/    { "TARGET_CORPSE_ENEMY_NEAR_CASTER",                      TARGET_TYPE_CORPSE,           TARGET_HARMFUL,    TARGET_ENUMERATOR_CHAIN  },
 };
 
 SpellEffectInfo SpellEffectInfoTable[MAX_SPELL_EFFECTS] =
@@ -394,6 +394,7 @@ void SpellTargetMgr::Initialize()
                 // start from first next target
                 for (uint32 effIdxTarget = effIdxSource; effIdxTarget < MAX_EFFECT_INDEX; ++effIdxTarget)
                 {
+                    SpellTargetImplicitType implicitEffectTypeTarget = data.implicitType[effIdxTarget];
                     for (uint8 rightTarget = effIdxSource == effIdxTarget ? rightSource + 1 : 0; rightTarget < 2; ++rightTarget)
                     {
                         uint32 targetTarget;
@@ -417,6 +418,8 @@ void SpellTargetMgr::Initialize()
                             bool ignore = false;
                             // exception for area auras
                             if (implicitEffectType == TARGET_TYPE_SPECIAL_UNIT && info.type == TARGET_TYPE_UNIT && info.enumerator != TARGET_ENUMERATOR_SINGLE)
+                                ignore = true;
+                            else if (implicitEffectTypeTarget == TARGET_TYPE_LOCATION_DEST && info.type == TARGET_TYPE_UNIT)
                                 ignore = true;
                             else
                             {

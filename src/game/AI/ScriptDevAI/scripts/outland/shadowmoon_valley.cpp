@@ -508,7 +508,7 @@ struct npc_wildaAI : public npc_escortAI
         m_attackDistance = 10.0f;
     }
 
-    void Aggro(Unit* pWho) override
+    void Aggro(Unit* /*pWho*/) override
     {
         if (roll_chance_i(30))
             DoCastSpellIfCan(m_creature, SPELL_EARTHBING_TOTEM);
@@ -1247,7 +1247,7 @@ struct npc_totem_of_spiritsAI : public ScriptedPetAI
 
     void AttackedBy(Unit* /*pAttacker*/) override {}
 
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiData) override
+    void SummonedMovementInform(Creature* pSummoned, uint32 /*uiMotionType*/, uint32 /*uiData*/) override
     {
         switch (pSummoned->GetEntry())
         {
@@ -1578,7 +1578,7 @@ struct npc_shadowlord_deathwailAI : public ScriptedAI
 
     // true = event started normally
     // false = something's wrong, ignore
-    bool SoulstealerEnteredCombat(Creature* unit, Unit* attacker)
+    bool SoulstealerEnteredCombat(Creature* /*unit*/, Unit* attacker)
     {
         if (!m_bEventInProgress)
         {
@@ -1869,7 +1869,7 @@ struct mob_shadowmoon_soulstealerAI : public ScriptedAI
                 DeathwailAI->SoulstealerDied(m_creature);
     }
 
-    void UpdateAI(const uint32 uiDiff) override
+    void UpdateAI(const uint32 /*uiDiff*/) override
     {
         if (!m_bSixtyTriggered)
         {
@@ -2224,7 +2224,7 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
         }
     }
 
-    void WaypointMotionType(uint32 motionType, uint32 pointId)
+    void WaypointMotionType(uint32 /*motionType*/, uint32 pointId)
     {
         switch (pointId)
         {
@@ -2280,7 +2280,7 @@ struct npc_spawned_oronok_tornheartAI : public ScriptedAI, private DialogueHelpe
         }
     }
 
-    void PointMovementInform(uint32 motionType, uint32 pointId)
+    void PointMovementInform(uint32 /*motionType*/, uint32 pointId)
     {
         switch (pointId)
         {
@@ -2548,7 +2548,7 @@ struct npc_veneratus_spawn_nodeAI : public Scripted_NoMovementAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
 };
 
 UnitAI* GetAI_npc_veneratus_spawn_node(Creature* pCreature)
@@ -2865,8 +2865,11 @@ static DeadliestScriptInfo deadliestScriptInfo[COMMANDER_COUNT] =
 
 struct npc_commanderAI : public ScriptedAI, public CombatActions
 {
-    npc_commanderAI(Creature* creature, uint8 commanderId) : ScriptedAI(creature), CombatActions(COMMANDER_COMBAT_ACTION_MAX), m_commanderId(commanderId),
-            m_defenderSpawns(DEFENDER_SPAWN_COUNT), m_dragonmawSpawns(DRAGONMAW_SPAWN_COUNT), m_killCounter(0)
+    npc_commanderAI(Creature* creature, uint8 commanderId) : ScriptedAI(creature), CombatActions(COMMANDER_COMBAT_ACTION_MAX),
+        m_defenderSpawns(DEFENDER_SPAWN_COUNT),
+        m_dragonmawSpawns(DRAGONMAW_SPAWN_COUNT),
+        m_killCounter(0),
+        m_commanderId(commanderId)
     {
         m_attackDistance = 30.f;
         m_meleeEnabled = false;
@@ -4279,6 +4282,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI, public CombatActions
             case NPC_SHADOWHOOF_ASSASSIN:
             case NPC_ILLIDARI_SUCCUBUS:
             {
+                m_creature->GetMotionMaster()->Clear(false, true);
                 m_creature->GetMotionMaster()->MoveWaypoint(0, 1, 1000);
                 m_creature->GetMotionMaster()->SetNextWaypoint(m_uiLastWaypoint + 1);
                 break;
@@ -4288,6 +4292,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI, public CombatActions
             case NPC_SEASONED_MAGISTER:
             case NPC_FYRA_DAWNSTAR:
             {
+                m_creature->GetMotionMaster()->Clear(false, true);
                 m_creature->GetMotionMaster()->MoveWaypoint(0, 2, 1000);
                 m_creature->GetMotionMaster()->SetNextWaypoint(m_uiLastWaypoint + 1);
                 break;
@@ -4296,6 +4301,7 @@ struct mob_bt_battle_fighterAI : public ScriptedAI, public CombatActions
             {
                 if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
                 {
+                    m_creature->GetMotionMaster()->Clear(false, true);
                     m_creature->GetMotionMaster()->MoveWaypoint(m_uiPathId, 2, 1000);
                     m_creature->GetMotionMaster()->SetNextWaypoint(m_uiLastWaypoint + 1);
                 }
@@ -4404,7 +4410,8 @@ struct FormationMap
                 if (occupant->isInCombat())
                     continue;
 
-                occupant->GetMotionMaster()->MoveWaypoint(0, 2, 0);
+                occupant->GetMotionMaster()->Clear(false, true);
+                occupant->GetMotionMaster()->MoveWaypoint(0, 2);
                 occupant->GetMotionMaster()->SetNextWaypoint(point);
                 occupant->SetWalk(false);
 
@@ -4467,6 +4474,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
     float m_fAldorScryerReinforceTimer;
     float m_fMidPoint = -3558.0f;
 
+    uint8 m_uiMinAttackGroupsReady = 5; // do not send an attack, if fewer than this many groups are ready
     uint8 m_uiMaxNumTroopsForward = 8;
     uint8 m_uiNumLightswornForward;
     uint8 m_uiNumMagisterForward;
@@ -4507,7 +4515,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
         }
     }*/
 
-    void ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* invoker, uint32 miscValue) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* sender, Unit* /*invoker*/, uint32 /*miscValue*/) override
     {
         const ObjectGuid senderGuid = sender->GetObjectGuid();
 
@@ -4607,13 +4615,9 @@ struct npc_bt_battle_sensor : public ScriptedAI
                     case AI_EVENT_CUSTOM_B:
                     {
                         if (Creature* senderCreature = dynamic_cast<Creature*>(sender))
-                        {
-                            senderCreature->ForcedDespawn(30000);
                             senderCreature->GetMotionMaster()->MoveRandomAroundPoint(sender->GetPositionX(), sender->GetPositionY(), sender->GetPositionZ(), 15.0f);
-                        }
                         if (mob_bt_battle_fighterAI* senderAI = dynamic_cast<mob_bt_battle_fighterAI*>(sender->AI()))
                             senderAI->m_bIsWaypointing = false;
-
                         break;
                     }
                 }
@@ -4696,13 +4700,9 @@ struct npc_bt_battle_sensor : public ScriptedAI
                     case AI_EVENT_CUSTOM_B:
                     {
                         if (Creature* senderCreature = dynamic_cast<Creature*>(sender))
-                        {
-                            senderCreature->ForcedDespawn(30000);
                             senderCreature->GetMotionMaster()->MoveRandomAroundPoint(sender->GetPositionX(), sender->GetPositionY(), sender->GetPositionZ(), 15.0f);
-                        }
                         if (mob_bt_battle_fighterAI* senderAI = dynamic_cast<mob_bt_battle_fighterAI*>(sender->AI()))
                             senderAI->m_bIsWaypointing = false;
-
                         break;
                     }
                 }
@@ -4764,7 +4764,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
                         if (urand(0, 1) || doomwalkerDead)
                         {
                             sender->GetMotionMaster()->Clear(false, true);
-                            sender->GetMotionMaster()->MoveWaypoint(0, 3, 0);
+                            sender->GetMotionMaster()->MoveWaypoint(0, 3);
                             sender->GetMotionMaster()->SetNextWaypoint(urand(0, 8));
 
                             if (Creature* senderAI = dynamic_cast<Creature*>(sender))
@@ -4825,7 +4825,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
                         if (urand(0, 1) || doomwalkerDead)
                         {
                             sender->GetMotionMaster()->Clear(false, true);
-                            sender->GetMotionMaster()->MoveWaypoint(0, 3, 0);
+                            sender->GetMotionMaster()->MoveWaypoint(0, 3);
                             sender->GetMotionMaster()->SetNextWaypoint(urand(0, 8));
 
                             if (Creature* senderAI = dynamic_cast<Creature*>(sender))
@@ -4887,7 +4887,7 @@ struct npc_bt_battle_sensor : public ScriptedAI
                     }
                     case AI_EVENT_CUSTOM_EVENTAI_B:
                         sender->GetMotionMaster()->Clear(false, true);
-                        sender->GetMotionMaster()->MoveWaypoint(0, 3, 0);
+                        sender->GetMotionMaster()->MoveWaypoint(0, 3);
                         sender->GetMotionMaster()->SetNextWaypoint(0);
 
                         if (Creature* senderAI = dynamic_cast<Creature*>(sender))
@@ -4926,7 +4926,8 @@ struct npc_bt_battle_sensor : public ScriptedAI
 
                     if (Creature* caalen = m_creature->GetMap()->GetCreature(m_caalenGuid))
                     {
-                        caalen->GetMotionMaster()->MoveWaypoint(0, 2, 0);
+                        caalen->GetMotionMaster()->Clear(false, true);
+                        caalen->GetMotionMaster()->MoveWaypoint(0, 2);
                         caalen->GetMotionMaster()->SetNextWaypoint(0);
                         caalen->SetWalk(false);
 
@@ -4935,7 +4936,8 @@ struct npc_bt_battle_sensor : public ScriptedAI
                     }
                     if (Creature* fyra = m_creature->GetMap()->GetCreature(m_fyraGuid))
                     {
-                        fyra->GetMotionMaster()->MoveWaypoint(0, 2, 0);
+                        fyra->GetMotionMaster()->Clear(false, true);
+                        fyra->GetMotionMaster()->MoveWaypoint(0, 2);
                         fyra->GetMotionMaster()->SetNextWaypoint(0);
                         fyra->SetWalk(false);
 
@@ -5117,20 +5119,33 @@ struct npc_bt_battle_sensor : public ScriptedAI
 
         if (Creature* leader = m_creature->GetMap()->GetCreature(leaderGuid))
         {
+            leader->GetMotionMaster()->Clear(false, true);
             leader->GetMotionMaster()->MoveWaypoint(0, 1);
             leader->GetMotionMaster()->SetNextWaypoint(waypoint);
+            leader->ForcedDespawn(600000);
             m_attackReadyMask -= attackGroup;
 
             if (mob_bt_battle_fighterAI* leaderAI = dynamic_cast<mob_bt_battle_fighterAI*>(leader->AI()))
                 leaderAI->m_bIsWaypointing = true;
         }
     }
+    
+    // Determine how many waves are ready
+    int countSetBits(uint8 n)
+    {
+        // base case 
+        if (n == 0)
+            return 0;
+        else
+            // if last bit set add 1 else add 0 
+            return (n & 1) + countSetBits(n >> 1);
+    }
 
     /* Most of the time send ravager group 3 or 4
     *  rest of the time send one of the others randomly */
     IllidariAttackGroup ChooseIllidariAttack()
     {
-        if (m_attackReadyMask == 0)
+        if (countSetBits(m_attackReadyMask) < m_uiMinAttackGroupsReady)
             return NONE;
         else
         {

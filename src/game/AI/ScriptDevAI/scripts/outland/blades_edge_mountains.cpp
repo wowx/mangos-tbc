@@ -141,6 +141,7 @@ struct mobs_nether_drakeAI : public ScriptedAI
             while (aNetherDrakeEntries[uiIndex] == m_creature->GetEntry())
                 uiIndex = urand(0, MAX_ENTRIES - 1);
 
+            m_creature->CastSpell(nullptr, 35426, TRIGGERED_OLD_TRIGGERED); // arcane explosion visual
             if (m_creature->UpdateEntry(aNetherDrakeEntries[uiIndex]))
             {
                 // Nihil does only dialogue
@@ -696,7 +697,7 @@ struct npc_simon_game_bunnyAI : public ScriptedAI
         Reset();
     }
 
-    void ReceiveAIEvent(AIEventType eventType, Unit* pSender, Unit* pInvoker, uint32 uiMiscValue) override
+    void ReceiveAIEvent(AIEventType eventType, Unit* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
     {
         switch (m_uiGamePhase)
         {
@@ -1136,14 +1137,14 @@ struct npc_vimgol_AI : public ScriptedAI
         m_uiCastTimer = 0;
     }
 
-    void MovementInform(uint32 uiMovementType, uint32 uiData) override
+    void MovementInform(uint32 /*uiMovementType*/, uint32 /*uiData*/) override
     {
         m_creature->GetMotionMaster()->Clear();
         m_creature->CastSpell(m_creature, SPELL_UNHOLY_GROWTH, TRIGGERED_NONE);
         m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
     }
 
-    void JustDied(Unit* pKiller) override
+    void JustDied(Unit* /*pKiller*/) override
     {
         m_creature->CastSpell(m_creature, SPELL_SUMMON_GRIMOIRE, TRIGGERED_OLD_TRIGGERED);
     }
@@ -1709,7 +1710,7 @@ struct go_aura_generator_000AI : public GameObjectAI
                     {
                         SpellEntry const* spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(SPELL_OSCILLATING_FREQUENCY_SCANNER);
                         myHolder = CreateSpellAuraHolder(spellInfo, player, m_go);
-                        GameObjectAura* Aur = new GameObjectAura(spellInfo, EFFECT_INDEX_0, nullptr, myHolder, player, m_go);
+                        GameObjectAura* Aur = new GameObjectAura(spellInfo, EFFECT_INDEX_0, nullptr, nullptr, myHolder, player, m_go);
                         myHolder->AddAura(Aur, EFFECT_INDEX_0);
                         if (!player->AddSpellAuraHolder(myHolder))
                             delete myHolder;
@@ -1886,7 +1887,7 @@ struct npc_fel_cannon : public Scripted_NoMovementAI
         }
     }
 
-    void MoveInLineOfSight(Unit* pWho) override {} // disable changing facing of any kind
+    void MoveInLineOfSight(Unit* /*pWho*/) override {} // disable changing facing of any kind
 
     void EnterEvadeMode() override
     {
@@ -2141,7 +2142,7 @@ enum
     SAY_FAIL_QUEST          = -1015017,
 };
 
-bool ProcessEventId_Soulgrinder(uint32 uiEventId, Object* pSource, Object* pTarget, bool bIsStart)
+bool ProcessEventId_Soulgrinder(uint32 /*uiEventId*/, Object* pSource, Object* /*pTarget*/, bool /*bIsStart*/)
 {
     if (GetClosestCreatureWithEntry((WorldObject*)pSource, NPC_SOULGRINDER, 20))
     {
@@ -3049,7 +3050,7 @@ struct npc_evergrove_druidAI : public ScriptedAI
     }
 };
 
-bool QuestAccept_npc_evergrove_druid(Player* player, Creature* creature, const Quest* quest)
+bool QuestAccept_npc_evergrove_druid(Player* player, Creature* creature, const Quest* /*quest*/)
 {
     // As soon as the player has accepted a quest, return to spawn again
     if (npc_evergrove_druidAI* druidAI = dynamic_cast<npc_evergrove_druidAI*>(creature->AI()))
@@ -3798,7 +3799,7 @@ struct npc_disruptor_towerAI : public ScriptedAI, public TimerManager
         summoned->CastSpell(m_creature, SPELL_BOLT_BURST, TRIGGERED_NONE);
     }
 
-    void JustDied(Unit* killer) override
+    void JustDied(Unit* /*killer*/) override
     {
         m_creature->CastSpell(nullptr, SPELL_CANNON_DEATH_VISUAL_START, TRIGGERED_OLD_TRIGGERED);
     }

@@ -38,6 +38,7 @@ class Player;
 class WorldSession;
 
 struct GameEventCreatureData;
+enum class VisibilityDistanceType : uint32;
 
 enum CreatureExtraFlags
 {
@@ -154,6 +155,7 @@ struct CreatureInfo
     uint32  VendorTemplateId;
     uint32  EquipmentTemplateId;
     uint32  GossipMenuId;
+    VisibilityDistanceType visibilityDistanceType;
     char const* AIName;
     uint32  ScriptID;
 
@@ -187,10 +189,18 @@ struct CreatureTemplateSpells
     uint32 spells[CREATURE_MAX_SPELLS];
 };
 
+struct CreatureCooldowns
+{
+    uint32 entry;
+    uint32 spellId;
+    uint32 cooldownMin;
+    uint32 cooldownMax;
+};
+
 struct EquipmentInfo
 {
-    uint32  entry;
-    uint32  equipentry[3];
+    uint32 entry;
+    uint32 equipentry[3];
 };
 
 // depricated old way
@@ -434,24 +444,6 @@ typedef std::list<VendorItemCount> VendorItemCounts;
 
 struct TrainerSpell
 {
-#ifdef BUILD_PLAYERBOT
-    TrainerSpell() : spell(0), spellCost(0), reqSkill(0), reqSkillValue(0), reqLevel(0), learnedSpell(0), isProvidedReqLevel(false), conditionId(0) {}
-
-    TrainerSpell(uint32 _spell, uint32 _spellCost, uint32 _reqSkill, uint32 _reqSkillValue, uint32 _reqLevel, uint32 _learnedspell, bool _isProvidedReqLevel, uint32 _conditionId)
-        : spell(_spell), spellCost(_spellCost), reqSkill(_reqSkill), reqSkillValue(_reqSkillValue), reqLevel(_reqLevel), learnedSpell(_learnedspell), isProvidedReqLevel(_isProvidedReqLevel), conditionId(_conditionId) {}
-
-    uint32 spell;
-    uint32 spellCost;
-    uint32 reqSkill;
-    uint32 reqSkillValue;
-    uint32 reqLevel;
-    uint32 learnedSpell;
-    uint32 conditionId;
-    bool isProvidedReqLevel;
-
-    // helpers
-    bool IsCastable() const { return learnedSpell != spell; }
-#else
     TrainerSpell() : spell(0), spellCost(0), reqSkill(0), reqSkillValue(0), reqLevel(0), learnedSpell(0), conditionId(0), isProvidedReqLevel(false) {}
 
     TrainerSpell(uint32 _spell, uint32 _spellCost, uint32 _reqSkill, uint32 _reqSkillValue, uint32 _reqLevel, uint32 _learnedspell, bool _isProvidedReqLevel, uint32 _conditionId)
@@ -468,7 +460,6 @@ struct TrainerSpell
 
     // helpers
     bool IsCastable() const { return learnedSpell != spell; }
-#endif
 };
 
 typedef std::unordered_map < uint32 /*spellid*/, TrainerSpell > TrainerSpellMap;
@@ -757,6 +748,7 @@ class Creature : public Unit
         bool HasSearchedAssistance() const { return m_AlreadySearchedAssistance; }
         bool CanAssistTo(const Unit* u, const Unit* enemy, bool checkfaction = true) const;
         bool CanInitiateAttack() const;
+        bool IsInGroup(Unit const* other, bool party/* = false*/, bool ignoreCharms/* = false*/) const override;
 
         MovementGeneratorType GetDefaultMovementType() const { return m_defaultMovementType; }
         void SetDefaultMovementType(MovementGeneratorType mgt) { m_defaultMovementType = mgt; }
@@ -896,7 +888,7 @@ class Creature : public Unit
         float m_respawnradius;
 
         CreatureSubtype m_subtype;                          // set in Creatures subclasses for fast it detect without dynamic_cast use
-        void RegeneratePower();
+        void RegeneratePower(float timerMultiplier);
         virtual void RegenerateHealth();
         MovementGeneratorType m_defaultMovementType;
         Cell m_currentCell;                                 // store current cell where creature listed

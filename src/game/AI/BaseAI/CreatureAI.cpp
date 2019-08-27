@@ -63,7 +63,7 @@ void CreatureAI::AttackStart(Unit* who)
     }
 }
 
-void CreatureAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType damageType, SpellEntry const* spellInfo)
+void CreatureAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType /*damageType*/, SpellEntry const* /*spellInfo*/)
 {
     if (m_deathPrevention)
     {
@@ -78,7 +78,7 @@ void CreatureAI::DamageTaken(Unit* dealer, uint32& damage, DamageEffectType dama
 
 void CreatureAI::SetDeathPrevention(bool state)
 {
-    m_deathPrevention = true;
+    m_deathPrevention = state;
     if (state)
         m_deathPrevented = false;
 }

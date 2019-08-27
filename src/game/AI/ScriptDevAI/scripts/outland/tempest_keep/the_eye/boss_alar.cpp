@@ -205,7 +205,7 @@ struct boss_alarAI : public ScriptedAI
         }
     }
     
-    // UNCOMMENT THIS AREA WHEN PATCH 2.1 HITS
+    // UNCOMMENT THIS AREA WHEN PATCH 2.1 HITS - should be done through serverside 41910
     /* void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         // drain 2% of boss health when the ember dies
@@ -297,7 +297,7 @@ struct boss_alarAI : public ScriptedAI
         }
     }
 
-    void JustPreventedDeath(Unit* attacker) override
+    void JustPreventedDeath(Unit* /*attacker*/) override
     {
         // Only init fake in phase one
         if (m_uiPhase != PHASE_ONE || !m_canMelee)
@@ -319,6 +319,7 @@ struct boss_alarAI : public ScriptedAI
         m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
 
         m_creature->SetIgnoreRangedTargets(false);
+        SetCombatScriptStatus(true);
 
         if (DoCastSpellIfCan(m_creature, SPELL_EMBER_BLAST) == CAST_OK)
         {
@@ -403,6 +404,7 @@ struct boss_alarAI : public ScriptedAI
                 if (m_uiPhaseTransitionTimer <= uiDiff)
                 {
                     m_uiPhaseTransitionTimer = 0;
+                    SetCombatScriptStatus(false);
                     m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     m_creature->SetStandState(UNIT_STAND_STATE_STAND);
 
