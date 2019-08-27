@@ -8939,5 +8939,9 @@ INSERT INTO script_waypoint VALUES
 (24358,0,12,120.9157,1595.822,43.96694,100,0,0,'guardian attacker moves 2'),
 (24358,0,13,120.594,1587.591,43.43018,100,5000,0,'dies');
 
--- EOF
+/* Custom */
+UPDATE creature_template SET ScriptName='Teleporter' WHERE entry=50000;
+UPDATE creature_template SET ScriptName='npc_barber' WHERE entry=50001;
+UPDATE creature_template SET ScriptName='npc_beastmaster' WHERE entry=50003;
 
+-- EOF
