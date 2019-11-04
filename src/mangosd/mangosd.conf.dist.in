@@ -235,7 +235,6 @@ vmap.enableHeight = 1
 vmap.ignoreSpellIds = "7720"
 vmap.enableIndoorCheck = 1
 DetectPosCollision = 1
-TargetPosRecalculateRange = 1.5
 mmap.enabled = 1
 mmap.ignoreMapIds = ""
 PathFinder.OptimizePath = 1
@@ -920,7 +919,7 @@ TalentsInspecting = 1
 #
 #    CreatureFamilyFleeDelay
 #        Time during which creature can flee when no assistant found
-#        Default: 7000 (7s)
+#        Default: 10000 (10s)
 #
 #    WorldBossLevelDiff
 #        Difference for boss dynamic level with target
@@ -1004,7 +1003,7 @@ CreatureRespawnAggroDelay = 5000
 CreatureFamilyFleeAssistanceRadius = 30
 CreatureFamilyAssistanceRadius = 10
 CreatureFamilyAssistanceDelay = 1500
-CreatureFamilyFleeDelay = 7000
+CreatureFamilyFleeDelay = 10000
 WorldBossLevelDiff = 3
 Corpse.EmptyLootShow = 1
 Corpse.AllowAllItemsShowInMasterLoot = 1

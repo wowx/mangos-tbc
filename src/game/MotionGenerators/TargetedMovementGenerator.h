@@ -172,6 +172,8 @@ class FollowMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Fol
         void Interrupt(Unit& owner) override;
         void Reset(Unit& owner) override;
 
+        bool GetResetPosition(Unit& owner, float& x, float& y, float& z, float& o) const override;
+
         static void _clearUnitStateMove(Unit& owner);
         static void _addUnitStateMove(Unit& owner);
 
@@ -186,20 +188,23 @@ class FollowMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Fol
 
     protected:
         virtual float GetAngle(Unit& owner) const;
-        virtual float GetOffset(Unit &owner) const;
-        virtual float GetVelocity(Unit& owner, bool allowCatchup = false) const;
+        virtual float GetOffset(Unit& owner) const;
+        virtual float GetSpeed(Unit& owner, bool boosted = false) const;
 
-        virtual bool Move(Unit& owner, float x, float y, float z);
-        virtual bool Unstuck(Unit& owner, float x, float y, float z);
+        virtual bool IsBoostAllowed(Unit& owner) const;
+        virtual bool IsUnstuckAllowed(Unit& owner) const;
+
+        virtual bool Move(Unit& owner, float x, float y, float z, bool catchup);
 
         float GetDynamicTargetDistance(Unit& owner, bool forRangeCheck) const override;
         void HandleTargetedMovement(Unit& owner, const uint32& time_diff) override;
         void HandleFinalizedMovement(Unit& owner) override;
 
     private:
-        void _setOrientation(Unit& owner);
-        void _setLocation(Unit& owner, bool updateDestination);
-        bool _move(Unit& owner, const PointsArray& path, int32 offset = 0) const;
+        virtual bool _getOrientation(Unit& owner, float& o) const;
+        virtual bool _getLocation(Unit& owner, float& x, float& y, float& z) const;
+        virtual void _setOrientation(Unit& owner);
+        virtual void _setLocation(Unit& owner, bool catchup);
 
         bool m_main;
         bool m_targetMoving;
