@@ -6320,12 +6320,6 @@ void Unit::CombatStop(bool includingCast, bool includingCombo)
     {
         ((Creature*)this)->SetNoCallAssistance(false);
 
-        if (((Creature*)this)->HasSearchedAssistance())
-        {
-            ((Creature*)this)->SetNoSearchAssistance(false);
-            UpdateSpeed(MOVE_RUN, false);
-        }
-
         if (((Creature*)this)->GetTemporaryFactionFlags() & TEMPFACTION_RESTORE_COMBAT_STOP)
             ((Creature*)this)->ClearTemporaryFaction();
     }
@@ -8654,14 +8648,8 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
             break;
     }
 
-    // for creature case, we check explicit if mob searched for assistance
-    if (GetTypeId() == TYPEID_UNIT)
-    {
-        if (((Creature*)this)->HasSearchedAssistance())
-            speed *= 0.66f;                                 // best guessed value, so this will be 33% reduction. Based off initial speed, mob can then "run", "walk fast" or "walk".
-    }
     // for player case, we look for some custom rates
-    else
+    if (GetTypeId() == TYPEID_PLAYER)
     {
         if (getDeathState() == CORPSE)
             speed *= sWorld.getConfig(((Player*)this)->InBattleGround() ? CONFIG_FLOAT_GHOST_RUN_SPEED_BG : CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD);
@@ -10191,7 +10179,7 @@ void Unit::InterruptMoving(bool forceSendStop /*=false*/)
     StopMoving(forceSendStop || isMoving);
 }
 
-void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
+bool Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
     if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED))
     {
@@ -10216,10 +10204,13 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 
         if (apply)
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
+
+        return true;
     }
+    return false;
 }
 
-void Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint32 spellID/* = 0*/, uint32 duration/* = 0*/)
+bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint32 spellID/* = 0*/, uint32 duration/* = 0*/)
 {
     // Normal flee always takes prio over timed flee (panic)
     if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING) || (apply && IsInPanic()))
@@ -10228,11 +10219,11 @@ void Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
         {
             // Fleeing prevention aura taken into account first
             if (HasAuraType(SPELL_AURA_PREVENTS_FLEEING))
-                return;
+                return false;
 
             // Do not panic if already confused
             if (duration && IsConfused())
-                return;
+                return false;
 
             CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
         }
@@ -10253,10 +10244,13 @@ void Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
 
         if (apply)
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
+
+        return true;
     }
+    return false;
 }
 
-void Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
+bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
     if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED))
     {
@@ -10283,9 +10277,12 @@ void Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
                 SetFacingTo(GetOrientation());
             }
         }
-    }
 
-    ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
+        ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
+
+        return true;
+    }
+    return false;
 }
 
 void Unit::SetImmobilizedState(bool apply, bool stun)
