@@ -328,6 +328,21 @@ void MotionMaster::MoveFollow(Unit* target, float dist, float angle, bool asMain
     Mutate(new FollowMovementGenerator(*target, dist, angle, asMain));
 }
 
+void MotionMaster::MoveStay(float x, float y, float z, float o, bool asMain)
+{
+    if (m_owner->hasUnitState(UNIT_STAT_LOST_CONTROL))
+        return;
+
+    if (asMain)
+        Clear(false, true);
+    else
+        Clear(!empty()); // avoid resetting if we are already empty
+
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s stays at position (X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), x, y, z);
+
+    Mutate(new StayMovementGenerator(x, y, z, o));
+}
+
 void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath/* = true*/, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/)
 {
     return MovePoint(id, x, y, z, 0, generatePath, forcedMovement);
@@ -341,6 +356,12 @@ void MotionMaster::MovePoint(uint32 id, float x, float y, float z, float o, bool
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), id, x, y, z);
 
     Mutate(new PointMovementGenerator(id, x, y, z, o, generatePath, forcedMovement));
+}
+
+void MotionMaster::MovePointTOL(uint32 id, float x, float y, float z, bool takeOff, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/)
+{
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point for %s (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), takeOff ? "liftoff" : "landing", id, x, y, z);
+    Mutate(new PointTOLMovementGenerator(id, x, y, z, takeOff, forcedMovement));
 }
 
 void MotionMaster::MoveRetreat(float x, float y, float z, float o, uint32 delay)
@@ -422,15 +443,6 @@ void MotionMaster::MoveDistract(uint32 timer)
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s distracted (timer: %u)", m_owner->GetGuidStr().c_str(), timer);
     DistractMovementGenerator* mgen = new DistractMovementGenerator(timer);
     Mutate(mgen);
-}
-
-void MotionMaster::MoveFlyOrLand(uint32 id, float x, float y, float z, bool liftOff)
-{
-    if (m_owner->GetTypeId() != TYPEID_UNIT)
-        return;
-
-    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point for %s (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), liftOff ? "liftoff" : "landing", id, x, y, z);
-    Mutate(new FlyOrLandMovementGenerator(id, x, y, z, liftOff));
 }
 
 void MotionMaster::MoveCharge(float x, float y, float z, float speed, uint32 id/*= EVENT_CHARGE*/)
