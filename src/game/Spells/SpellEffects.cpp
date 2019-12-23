@@ -1531,6 +1531,36 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
+                case 28098:                                 // Stalagg Tesla Effect
+                case 28110:                                 // Feugen Tesla Effect
+                {
+                    if (unitTarget && unitTarget->GetTypeId() == TYPEID_UNIT && unitTarget->isAlive())
+                    {
+                        if (!m_caster->hasUnitState(UNIT_STAT_ROOT))    // This state is found in sniffs and is probably caused by another aura like 23973
+                            m_caster->addUnitState(UNIT_STAT_ROOT);     // but as we are not sure (the aura does not show up in sniffs), we handle the state here
+
+                        // Cast chain (Stalagg Chain or Feugen Chain)
+                        uint32 chainSpellId = m_spellInfo->Id == 28098 ? 28096 : 28111;
+                        // Only cast if not already present and in range
+                        if (!unitTarget->HasAura(chainSpellId) && m_caster->IsWithinDistInMap(unitTarget, 60.0f))
+                        {
+                            if (!m_caster->IsImmuneToPlayer())
+                                m_caster->SetImmuneToPlayer(true);
+                            m_caster->CastSpell(unitTarget, chainSpellId, TRIGGERED_OLD_TRIGGERED);
+                        }
+                        // Not in range and fight in progress: remove aura and cast Shock onto players
+                        else if (!m_caster->IsWithinDistInMap(unitTarget, 60.0f) && m_caster)
+                        {
+                            unitTarget->RemoveAurasDueToSpell(chainSpellId);
+                            m_caster->SetImmuneToPlayer(false);
+
+                            if (Unit* target = ((Creature*)m_caster)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                                m_caster->CastSpell(target, 28099, TRIGGERED_NONE);
+                        }
+                        // else: in range and already have aura: do nothing
+                    }
+                    return;
+                }
                 case 28238:                                 // Zombie Chow Search
                 {
                     m_caster->SetHealth(m_caster->GetHealth() + m_caster->GetMaxHealth() * 0.05f); // Gain 5% heal
@@ -1540,6 +1570,16 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     // Target is filtered in Spell::FilterTargetMap
                     m_caster->CastSpell(unitTarget, 28308, TRIGGERED_NONE); // Hateful Strike
+                    return;
+                }
+                case 28359:                                 // Trigger Teslas
+                {
+                    if (unitTarget)
+                    {
+                        DoScriptText(-1533150, unitTarget, unitTarget);
+                        unitTarget->RemoveAllAuras();
+                        unitTarget->CastSpell(unitTarget, 28159, TRIGGERED_NONE);   // Shock
+                    }
                     return;
                 }
                 case 28414:                                 // Call of the Ashbringer
@@ -4612,16 +4652,31 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
 
     // Expected Level
     Unit* petInvoker = responsibleCaster ? responsibleCaster : m_caster;
-    uint32 level = petInvoker->getLevel();
+    uint32 level;
+    // Everything considered as guardian or critter pets uses its creature template level by default (may change depending on SpellEffect params)
+    if (summon_prop->Title == UNITNAME_SUMMON_TITLE_GUARDIAN || summon_prop->Title == UNITNAME_SUMMON_TITLE_COMPANION)
+    {
+        if (CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(m_spellInfo->EffectMiscValue[eff_idx]))
+            level = urand(cInfo->MinLevel, cInfo->MaxLevel);
+        else
+        {
+            sLog.outError("Spell Effect EFFECT_SUMMON (%u) - no creature template found for summoned NPC %u (spell id %u, effIndex %u)", m_spellInfo->Effect[eff_idx], m_spellInfo->EffectMiscValue[eff_idx], m_spellInfo->Id, eff_idx);
+            return;
+        }
+    }
+    else    // Use invoker level in all other cases (to be confirmed)
+        level = petInvoker->getLevel();
     if (petInvoker->GetTypeId() != TYPEID_PLAYER)
     {
-        // pet players do not need this
-        // TODO :: Totem, Pet and Critter may not use this. This is probably wrongly used and need more research.
-        uint32 resultLevel = level + std::max(m_spellInfo->EffectMultipleValue[eff_idx], .0f);
+        // If EffectMultipleValue <= 0, pets have their calculated level modified by EffectMultipleValue
+        if (m_spellInfo->EffectMultipleValue[eff_idx] <= 0)
+        {
+            uint32 resultLevel = std::max(petInvoker->getLevel() + m_spellInfo->EffectMultipleValue[eff_idx], 0.0f);
 
-        // result level should be a possible level for creatures
-        if (resultLevel > 0 && resultLevel <= DEFAULT_MAX_CREATURE_LEVEL)
-            level = resultLevel;
+            // Result level should be a valid level for creatures
+            if (resultLevel > 0 && resultLevel <= DEFAULT_MAX_CREATURE_LEVEL)
+                level = resultLevel;
+        }
     }
     // level of creature summoned using engineering item based at engineering skill level
     else if (m_CastItem)
@@ -4635,13 +4690,7 @@ void Spell::EffectSummonType(SpellEffectIndex eff_idx)
                 amount = 1;                                 // TODO HACK (needs a neat way of doing)
             }
         }
-        else if (CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(m_spellInfo->EffectMiscValue[eff_idx]))
-        {
-            if (level >= cInfo->MaxLevel)
-                level = cInfo->MaxLevel;
-            else if (level <= cInfo->MinLevel)
-                level = cInfo->MinLevel;
-        }
+        // other cases are covered above by using level from template
     }
 
     CreatureSummonPositions summonPositions;
@@ -6828,6 +6877,17 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         DoScriptText(-1533119, m_caster, unitTarget);
                     return;
                 }
+                case 28338:                                 // Magnetic Pull
+                case 28339:                                 // Magnetic Pull
+                {
+                    if (unitTarget && m_caster->getVictim())
+                        unitTarget->CastSpell(m_caster->getVictim(), 28337, TRIGGERED_OLD_TRIGGERED);   // target cast actual Magnetic Pull on caster's victim
+                        // ToDo research if target should also get the threat of the caster for caster's victim.
+                        // This is the case in WotLK version but we have no proof of this in Classic/TBC
+                        // and it was common at these times to let players manage threat and tank transitions by themselves
+                    return;
+                }
+
                 case 28352:                                 // Breath of Sargeras
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -8889,9 +8949,6 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
     if (!unitTarget || !m_caster)
         return;
 
-    WorldLocation pos;
-    unitTarget->GetFirstCollisionPosition(pos, unitTarget->GetCombatReach(), unitTarget->GetAngle(m_caster));
-
     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
         ((Creature*)unitTarget)->StopMoving();
 
@@ -8899,9 +8956,14 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
     if (m_caster->GetTypeId() == TYPEID_PLAYER)
         static_cast<Player*>(m_caster)->SetFallInformation(0, m_caster->GetPositionZ());
 
-    float speed = m_spellInfo->speed ? m_spellInfo->speed : BASE_CHARGE_SPEED;
+    const float speed = (m_spellInfo->speed != 0.f ? m_spellInfo->speed : BASE_CHARGE_SPEED);
 
-    m_caster->GetMotionMaster()->MoveCharge(pos.coord_x, pos.coord_y, pos.coord_z, speed, m_spellInfo->Id);
+    m_caster->GetMotionMaster()->MoveCharge(*unitTarget, speed, m_spellInfo->Id);
+
+    // Players: charge against hostiles initiates auto-attack
+    // TODO: This is executed after spell effects. Verify if this should be executed before spell effects
+    if (m_caster->IsClientControlled() && m_caster->CanAttackNow(unitTarget) && m_caster->CanAttackSpell(unitTarget, m_spellInfo))
+        m_caster->Attack(unitTarget, !m_spellInfo->HasAttribute(SPELL_ATTR_RANGED));
 }
 
 void Spell::EffectChargeDest(SpellEffectIndex /*eff_idx*/)

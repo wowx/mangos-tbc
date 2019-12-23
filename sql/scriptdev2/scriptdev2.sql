@@ -831,7 +831,6 @@ UPDATE creature_template SET ScriptName='boss_gluth' WHERE entry=15932;
 UPDATE creature_template SET ScriptName='boss_thaddius' WHERE entry=15928;
 UPDATE creature_template SET ScriptName='boss_stalagg' WHERE entry=15929;
 UPDATE creature_template SET ScriptName='boss_feugen' WHERE entry=15930;
-UPDATE creature_template SET ScriptName='npc_tesla_coil' WHERE entry=16218;
 UPDATE creature_template SET ScriptName='boss_sapphiron' WHERE entry=15989;
 UPDATE gameobject_template SET ScriptName='go_sapphiron_birth' WHERE entry=181356;
 UPDATE gameobject_template SET ScriptName='go_anub_door' WHERE entry=181126;
@@ -3416,11 +3415,11 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1533028,'No... more... Feugen...',8803,1,0,0,'feugen SAY_FEUG_DEATH'),
 
 (-1533029,'You are too late... I... must... OBEY!',8872,1,0,0,'thaddius SAY_GREET'),
-(-1533030,'KILL!',8867,1,0,0,'thaddius SAY_AGGRO1'),
-(-1533031,'EAT YOUR BONES!',8868,1,0,0,'thaddius SAY_AGGRO2'),
-(-1533032,'BREAK YOU!',8869,1,0,0,'thaddius SAY_AGGRO3'),
-(-1533033,'You die now!',8877,1,0,0,'thaddius SAY_SLAY'),
-(-1533034,'Now YOU feel pain!',8871,1,0,0,'thaddius SAY_ELECT'),
+(-1533030,'Kill!',8867,1,0,0,'thaddius SAY_AGGRO1'),
+(-1533031,'Eat... your... bones...',8868,1,0,0,'thaddius SAY_AGGRO2'),
+(-1533032,'Break... you!',8869,1,0,0,'thaddius SAY_AGGRO3'),
+(-1533033,'You... die now!',8877,1,0,0,'thaddius SAY_SLAY'),
+(-1533034,'Now you feel pain...',8871,1,0,0,'thaddius SAY_ELECT'),
 (-1533035,'Thank... you...',8870,1,0,0,'thaddius SAY_DEATH'),
 (-1533036,'REUSE_ME',0,0,0,0,'REUSE'),
 (-1533037,'REUSE_ME',0,0,0,0,'REUSE'),
@@ -3554,7 +3553,7 @@ INSERT INTO script_texts (entry,content_default,sound,type,language,emote,commen
 (-1533148,'%s sprays strands of web everywhere!',0,3,0,0,'maexxna EMOTE_SPRAY'),
 
 (-1533149,'%s loses its link!',0,3,0,0,'tesla_coil EMOTE_LOSING_LINK'),
-(-1533150,'%s overloads!',0,3,0,0,'tesla_coil EMOTE_TESLA_OVERLOAD'),
+(-1533150,'%s overloads!',0,7,0,0,'tesla_coil EMOTE_TESLA_OVERLOAD'),
 (-1533151,'The polarity has shifted!',0,3,0,0,'thaddius EMOTE_POLARITY_SHIFT'),
 
 (-1533152,'%s decimates all nearby flesh!',0,3,0,0,'gluth EMOTE_DECIMATE'),
