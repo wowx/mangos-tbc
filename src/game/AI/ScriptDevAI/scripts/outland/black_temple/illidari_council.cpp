@@ -216,9 +216,6 @@ struct mob_illidari_councilAI : public ScriptedAI, public TimerManager
         m_eventBegun = false;
         m_eventEnd   = false;
 
-
-        // m_uiEquivalencyTimer = urand(20000, 30000);
-
         DisableTimer(GENERIC_ACTION_BALANCE);
         m_creature->SetHealth(m_creature->GetMaxHealth());
 
@@ -284,18 +281,6 @@ struct mob_illidari_councilAI : public ScriptedAI, public TimerManager
 
     void UpdateAI(const uint32 diff) override
     {
-
-        // Make the council members health equal every 2-3 secs
-     if (m_bEventBegun && !m_bEventEnd)
-        {
-            if (m_uiEquivalencyTimer < uiDiff)
-            {
-                // if (DoCastSpellIfCan(m_creature, SPELL_EMPYREAL_EQUIVALENCY) == CAST_OK)
-                //    m_uiEquivalencyTimer = urand(2000, 3000);
-            }
-            else
-                m_uiEquivalencyTimer -= uiDiff;
-        } 
 
         UpdateTimers(diff);
 
@@ -443,14 +428,12 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
         {
             case GATHIOS_ACTION_JUDGEMENT:
             {
-
                 if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_JUDGMENT) == CAST_OK)
                 {
                     DisableCombatAction(action);
                     ResetCombatAction(GATHIOS_ACTION_SEAL, urand(2000, 7000));
                 }
                 return;
-
             }
             case GATHIOS_ACTION_SEAL:
             {
@@ -463,7 +446,6 @@ struct boss_gathios_the_shattererAI : public boss_illidari_councilAI
                 return;
             }
             case GATHIOS_ACTION_AURA:
-
             {
                 if (DoCastSpellIfCan(nullptr, urand(0, 1) ? SPELL_DEVOTION_AURA : SPELL_CHROMATIC_AURA) == CAST_OK)
                     ResetCombatAction(action, 90000);
@@ -537,18 +519,15 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
     {
         switch (action)
         {
-
             case ZEREVOR_ACTION_BLIZZARD:
             {
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_BLIZZARD) == CAST_OK)
                         ResetCombatAction(action, urand(5000, 15000));
                 return;
-
             }
             case ZEREVOR_ACTION_FLAMESTRIKE:
             {
-
                 if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
                     if (DoCastSpellIfCan(target, SPELL_FLAMESTRIKE) == CAST_OK)
                         ResetCombatAction(action, urand(5000, 15000));
@@ -572,7 +551,6 @@ struct boss_high_nethermancer_zerevorAI : public boss_illidari_councilAI
                     if (DoCastSpellIfCan(nullptr, SPELL_ARCANE_EXPLOSION) == CAST_OK)
                         ResetCombatAction(action, urand(5000, 15000));
                 return;
-
             }
         }
     }
@@ -633,7 +611,6 @@ struct boss_lady_malandeAI : public boss_illidari_councilAI
         {
             case MALANDE_ACTION_CIRCLE_OF_HEALING:
             {
-
                 if (DoCastSpellIfCan(nullptr, SPELL_CIRCLE_OF_HEALING) == CAST_OK)
                     ResetCombatAction(action, 20000);
                 return;
@@ -677,7 +654,6 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
 {
     boss_veras_darkshadowAI(Creature* creature) : boss_illidari_councilAI(creature, VERAS_ACTION_MAX)
     {
-
         AddCustomAction(VERAS_ENVENOM_ANIMATION, true, [&]()
         {
             if (Creature* target = m_creature->GetMap()->GetCreature(m_envenomAnimTarget))
@@ -685,7 +661,6 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
         });
         AddCombatAction(VERAS_ACTION_VANISH, 10000u);
         Reset();
-
     }
 
     ObjectGuid m_envenomAnimTarget;
@@ -715,7 +690,6 @@ struct boss_veras_darkshadowAI : public boss_illidari_councilAI
                 m_creature->getThreatManager().SetTargetSuppressed(victim);
         }
     }
-
 
     void JustSummoned(Creature* summoned) override
     {
