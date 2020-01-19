@@ -108,8 +108,8 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
     public:
         ChaseMovementGenerator(Unit& target, float offset, float angle, bool moveFurther = true, bool walk = false, bool combat = true)
             : TargetedMovementGeneratorMedium<Unit, ChaseMovementGenerator >(target, offset, angle),
-              m_moveFurther(moveFurther), m_walk(walk), m_combat(combat), m_reachable(true),
-              m_closenessAndFanningTimer(0), m_closenessExpired(false), m_currentMode(CHASE_MODE_NORMAL) {}
+            m_moveFurther(moveFurther), m_walk(walk), m_combat(combat), m_reachable(true),
+            m_fanningEnabled(true), m_currentMode(CHASE_MODE_NORMAL), m_closenessAndFanningTimer(0), m_closenessExpired(false) {}
         ~ChaseMovementGenerator() {}
 
         MovementGeneratorType GetMovementGeneratorType() const override { return CHASE_MOTION_TYPE; }
@@ -147,7 +147,7 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         virtual bool _getLocation(Unit& owner, float& x, float& y, float& z) const;
         virtual void _setLocation(Unit& owner);
 
-        bool DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath);
+        bool DispatchSplineToPosition(Unit& owner, float x, float y, float z, bool walk, bool cutPath, bool target = false);
         void CutPath(Unit& owner, PointsArray& path);
         void Backpedal(Unit& owner);
 
@@ -155,6 +155,7 @@ class ChaseMovementGenerator : public TargetedMovementGeneratorMedium<Unit, Chas
         bool m_walk;
         bool m_combat;
         bool m_reachable;
+        bool m_fanningEnabled;
 
         uint32 m_closenessAndFanningTimer;
         bool m_closenessExpired;

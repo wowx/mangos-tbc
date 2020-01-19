@@ -110,15 +110,16 @@ namespace MaNGOS
 
     struct ObjectUpdater
     {
-        explicit ObjectUpdater(WorldObjectUnSet& otus) : m_objectToUpdateSet(otus) {}
+        ObjectUpdater(WorldObjectUnSet& otus, const uint32& diff) : m_objectToUpdateSet(otus), m_timeDiff(diff) {}
         template<class T> void Visit(GridRefManager<T>& m);
         void Visit(PlayerMapType&) {}
         void Visit(CorpseMapType&) {}
         void Visit(CameraMapType&) {}
         void Visit(CreatureMapType&);
 
-      private:
-      WorldObjectUnSet& m_objectToUpdateSet;
+        private:
+            WorldObjectUnSet& m_objectToUpdateSet;
+            uint32 m_timeDiff;
     };
 
     struct PlayerVisitObjectsNotifier
@@ -894,6 +895,10 @@ namespace MaNGOS
             WorldObject const& GetFocusObject() const { return *i_obj; }
             bool operator()(Unit* u) const
             {
+                // ignore totems
+                if (u->GetTypeId() == TYPEID_UNIT && ((Creature*)u)->IsTotem())
+                    return false;
+                
                 return u->isAlive() && i_obj->CanAttackSpell(u) && i_obj->IsWithinDistInMap(u, i_range) && i_obj->IsWithinLOSInMap(u);
             }
         private:

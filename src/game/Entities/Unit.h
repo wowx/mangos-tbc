@@ -34,6 +34,7 @@
 #include "Globals/SharedDefines.h"
 #include "Combat/ThreatManager.h"
 #include "Combat/HostileRefManager.h"
+#include "Combat/CombatManager.h"
 #include "MotionGenerators/FollowerReference.h"
 #include "MotionGenerators/FollowerRefManager.h"
 #include "Utilities/EventProcessor.h"
@@ -42,6 +43,7 @@
 #include "WorldPacket.h"
 #include "Timer.h"
 #include "AI/BaseAI/UnitAI.h"
+#include "PlayerDefines.h"
 
 #include <list>
 
@@ -106,40 +108,6 @@ enum SpellPartialResist
 };
 
 #define NUM_SPELL_PARTIAL_RESISTS 5
-
-enum SpellModOp
-{
-    SPELLMOD_DAMAGE                     = 0,
-    SPELLMOD_DURATION                   = 1,
-    SPELLMOD_THREAT                     = 2,
-    SPELLMOD_EFFECT1                    = 3,
-    SPELLMOD_CHARGES                    = 4,
-    SPELLMOD_RANGE                      = 5,
-    SPELLMOD_RADIUS                     = 6,
-    SPELLMOD_CRITICAL_CHANCE            = 7,
-    SPELLMOD_ALL_EFFECTS                = 8,
-    SPELLMOD_NOT_LOSE_CASTING_TIME      = 9,
-    SPELLMOD_CASTING_TIME               = 10,
-    SPELLMOD_COOLDOWN                   = 11,
-    SPELLMOD_EFFECT2                    = 12,
-    SPELLMOD_UNK1                       = 13, // unused
-    SPELLMOD_COST                       = 14,
-    SPELLMOD_CRIT_DAMAGE_BONUS          = 15,
-    SPELLMOD_RESIST_MISS_CHANCE         = 16,
-    SPELLMOD_JUMP_TARGETS               = 17,
-    SPELLMOD_CHANCE_OF_SUCCESS          = 18, // Only used with SPELL_AURA_ADD_FLAT_MODIFIER and affects proc spells
-    SPELLMOD_ACTIVATION_TIME            = 19,
-    SPELLMOD_EFFECT_PAST_FIRST          = 20,
-    SPELLMOD_GLOBAL_COOLDOWN            = 21,
-    SPELLMOD_DOT                        = 22,
-    SPELLMOD_EFFECT3                    = 23,
-    SPELLMOD_SPELL_BONUS_DAMAGE         = 24,
-    SPELLMOD_UNK2                       = 25, // unused
-    // SPELLMOD_FREQUENCY_OF_SUCCESS    = 26,                // not used in 2.4.3
-    SPELLMOD_MULTIPLE_VALUE             = 27,
-    SPELLMOD_RESIST_DISPEL_CHANCE       = 28,
-    MAX_SPELLMOD                        = 32,
-};
 
 enum SpellFacingFlags
 {
@@ -335,7 +303,19 @@ enum TriggerCastFlags : uint32
     TRIGGERED_NORMAL_COMBAT_CAST                = 0x00000100,   // AI needs to be notified about change of target TODO: change into TRIGGERED_NONE
     TRIGGERED_IGNORE_GCD                        = 0x00000200,   // Ignores GCD - to be used in spell scripts
     TRIGGERED_IGNORE_COSTS                      = 0x00000400,   // Ignores spell costs
+    TRIGGERED_IGNORE_COOLDOWNS                  = 0x00000800,   // Ignores cooldowns
     TRIGGERED_FULL_MASK                         = 0xFFFFFFFF
+};
+
+enum AuraScriptLocation : uint32
+{
+    SCRIPT_LOCATION_MELEE_DAMAGE_DONE,
+    SCRIPT_LOCATION_MELEE_DAMAGE_TAKEN,
+    SCRIPT_LOCATION_SPELL_DAMAGE_DONE,
+    SCRIPT_LOCATION_SPELL_DAMAGE_TAKEN,
+    SCRIPT_LOCATION_SPELL_HEALING_DONE,
+    SCRIPT_LOCATION_SPELL_HEALING_TAKEN,
+    SCRIPT_LOCATION_MAX,
 };
 
 enum UnitMods
@@ -568,8 +548,8 @@ enum UnitFlags
     UNIT_FLAG_MOUNT                 = 0x08000000,
     UNIT_FLAG_UNK_28                = 0x10000000,
     UNIT_FLAG_UNK_29                = 0x20000000,           // used in Feing Death spell
-    UNIT_FLAG_SHEATHE               = 0x40000000
-                                      // UNIT_FLAG_UNK_31              = 0x80000000           // no affect in 2.4.3
+    UNIT_FLAG_SHEATHE               = 0x40000000,
+    UNIT_FLAG_IMMUNE                = 0x80000000
 };
 
 // Value masks for UNIT_FIELD_FLAGS_2
@@ -957,7 +937,7 @@ enum SpellAuraProcResult
 {
     SPELL_AURA_PROC_OK              = 0,                    // proc was processed, will remove charges
     SPELL_AURA_PROC_FAILED          = 1,                    // proc failed - if at least one aura failed the proc, charges won't be taken
-    SPELL_AURA_PROC_CANT_TRIGGER    = 2                     // aura can't trigger - skip charges taking, move to next aura if exists
+    SPELL_AURA_PROC_CANT_TRIGGER    = 2,                    // aura can't trigger - skip charges taking, move to next aura if exists
 };
 
 // Unit* victim, uint32 procAttacker, uint32 procVictim, uint32 procExtra, uint32 amount, WeaponAttackType attType, SpellEntry const* procSpell, bool dontTriggerSpecial
@@ -1011,17 +991,14 @@ struct ProcExecutionData
     Aura* triggeredByAura;
     uint32 cooldown;
 
+    // Scripting data
+    uint32 triggeredSpellId;
+    int32 basepoints[MAX_EFFECT_INDEX] = { 0, 0, 0 };
+
     ProcExecutionData(ProcSystemArguments& data, bool isVictim);
 };
 typedef SpellAuraProcResult(Unit::*pAuraProcHandler)(ProcExecutionData& data);
 extern pAuraProcHandler AuraProcHandler[TOTAL_AURAS];
-
-#define MAX_DECLINED_NAME_CASES 5
-
-struct DeclinedName
-{
-    std::string name[MAX_DECLINED_NAME_CASES];
-};
 
 enum CurrentSpellTypes
 {
@@ -1033,7 +1010,6 @@ enum CurrentSpellTypes
 
 #define CURRENT_FIRST_NON_MELEE_SPELL 1
 #define CURRENT_MAX_SPELL             4
-#define INVISIBILITY_MAX              32
 
 enum ActiveStates
 {
@@ -1223,13 +1199,6 @@ enum PowerDefaults
     POWER_FOCUS_DEFAULT             = 100,
     POWER_ENERGY_DEFAULT            = 100,
     POWER_HAPPINESS_DEFAULT         = 1000000,
-};
-
-enum EvadeState
-{
-    EVADE_NONE,
-    EVADE_COMBAT, // In a dungeon in combat evades all hits until target becomes reachable
-    EVADE_HOME, // When running home evades all hits and disables some AI actions
 };
 
 struct SpellProcEventEntry;                                 // used only privately
@@ -1654,7 +1623,7 @@ class Unit : public WorldObject
         void SetCanParry(const bool flag);
         void SetCanBlock(const bool flag);
 
-        bool CanReactInCombat() const { return (isAlive() && !IsCrowdControlled() && !IsEvadingHome()); }
+        bool CanReactInCombat() const { return (isAlive() && !IsCrowdControlled() && !GetCombatManager().IsEvadingHome()); }
         bool CanDodgeInCombat() const;
         bool CanDodgeInCombat(const Unit* attacker) const;
         bool CanParryInCombat() const;
@@ -1771,7 +1740,8 @@ class Unit : public WorldObject
 
         bool IsTaxiFlying()  const { return hasUnitState(UNIT_STAT_TAXI_FLIGHT); }
 
-        bool isInCombat()  const { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT); }
+        bool isInCombat() const { return HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT); }
+        // unidirectional API - only use when absolutely necessary
         void SetInCombatState(bool PvP, Unit* enemy = nullptr);
         void SetInCombatWith(Unit* enemy);
         void SetInCombatWithAggressor(Unit* aggressor, bool touchOnly = false);
@@ -1780,8 +1750,11 @@ class Unit : public WorldObject
         inline void SetOutOfCombatWithAssisted(Unit* assisted) { SetInCombatWithAssisted(assisted, true); }
         void SetInCombatWithVictim(Unit* victim, bool touchOnly = false);
         inline void SetOutOfCombatWithVictim(Unit* victim) { SetInCombatWithVictim(victim, true); }
+        // bidirectional api - we need info about who is the attacker - handles leashing
+        void EngageInCombatWith(Unit* enemy);
+        void EngageInCombatWithAggressor(Unit* aggressor);
         void ClearInCombat();
-        uint32 GetCombatTimer() const { return m_CombatTimer; }
+        void HandleExitCombat();
 
         SpellAuraHolderBounds GetSpellAuraHolderBounds(uint32 spell_id)
         {
@@ -1881,7 +1854,10 @@ class Unit : public WorldObject
         void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false);
         // do not use - kept only for cinematics
         void MonsterMoveWithSpeed(float x, float y, float z, float speed, bool generatePath = false, bool forceDestination = false);
-        
+
+        // recommend use MonsterMove/MonsterMoveWithSpeed for most case that correctly work with movegens
+        // if used additional args in ... part then floats must explicitly casted to double
+        void SendTeleportPacket(float x, float y, float z, float ori);
         void SendHeartBeat();
 
         void SendMoveRoot(bool state, bool broadcastOnly = false);
@@ -1915,6 +1891,7 @@ class Unit : public WorldObject
         bool HasCharm(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? GetCharmGuid().IsUnit() : (GetCharmGuid() == exactGuid)); }
         bool HasCharmer(ObjectGuid const& exactGuid) const { return exactGuid.IsUnit() && GetCharmerGuid().IsUnit() && GetCharmerGuid() == exactGuid; }
         bool HasCharmer() const { return GetCharmerGuid().IsUnit(); }
+        bool HasMaster() const;
         bool HasTarget(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? GetTargetGuid().IsUnit() : (GetTargetGuid() == exactGuid)); }
         bool HasChannelObject(ObjectGuid const& exactGuid = ObjectGuid()) const { return (exactGuid.IsEmpty() ? !(GetChannelObjectGuid().IsEmpty()) : (GetChannelObjectGuid() == exactGuid)); }
 
@@ -2032,7 +2009,7 @@ class Unit : public WorldObject
 
         // removing specific aura FROM stack by diff reasons and selections
         void RemoveAuraHolderFromStack(uint32 spellId, uint32 stackAmount = 1, ObjectGuid casterGuid = ObjectGuid(), AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
-        void RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller);
+        void RemoveAuraHolderDueToSpellByDispel(uint32 spellId, uint32 dispellingSpellId, uint32 stackAmount, ObjectGuid casterGuid, Unit* dispeller);
 
         void DelaySpellAuraHolder(uint32 spellId, int32 delaytime, ObjectGuid casterGuid);
 
@@ -2070,7 +2047,7 @@ class Unit : public WorldObject
         // set withDelayed to true to account delayed spells as casted
         // delayed+channeled spells are always accounted as casted
         // we can skip channeled or delayed checks using flags
-        bool IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled = false, bool skipAutorepeat = false, bool forMovement = false) const;
+        bool IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled = false, bool skipAutorepeat = false, bool forMovement = false, bool forAutoIgnore = false) const;
 
         // set withDelayed to true to interrupt delayed spells too
         // delayed+channeled spells are always interrupted
@@ -2157,6 +2134,8 @@ class Unit : public WorldObject
         inline void SetMeleeDamageSchool(bool main, SpellSchools school) { SetAttackDamageSchool((main ? BASE_ATTACK : OFF_ATTACK), school); }
         inline void SetMeleeDamageSchool(SpellSchools school) { SetMeleeDamageSchool(true, school); SetMeleeDamageSchool(false, school); }
 
+        SpellSchoolMask GetMainAttackSchoolMask();
+
         // Visibility system
         UnitVisibility GetVisibility() const { return m_Visibility; }
         void SetVisibility(UnitVisibility x);
@@ -2164,17 +2143,7 @@ class Unit : public WorldObject
         void UpdateVisibilityAndView() override;            // overwrite WorldObject::UpdateVisibilityAndView()
 
         // common function for visibility checks for player/creatures with detection code
-        bool IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true, bool spell = false) const;
-        float GetVisibleDistance(Unit const * target, bool alert = false) const;
-        bool CanDetectInvisibilityOf(Unit const* u) const;
-        uint32 GetInvisibilityDetectMask() const;
-        void SetInvisibilityDetectMask(uint32 index, bool apply);
-        uint32 GetInvisibilityMask() const;
-        void SetInvisibilityMask(uint32 index, bool apply);
-        void AddInvisibilityValue(uint32 index, int32 value) { m_invisibilityValues[index] += value; }
-        void AddInvisibilityDetectValue(uint32 index, int32 value) { m_invisibilityDetectValues[index] += value; }
-        int32 GetInvisibilityValue(uint32 index) const;
-        int32 GetInvisibilityDetectValue(uint32 index) const;
+        bool IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true, bool spell = false) const;     
 
         // virtual functions for all world objects types
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const override;
@@ -2194,7 +2163,6 @@ class Unit : public WorldObject
         bool SelectHostileTarget();
         bool IsSuppressedTarget(Unit* target) const;
         bool IsOfflineTarget(Unit* victim) const;
-        bool IsLeashingTarget(Unit* victim) const;
         void TauntUpdate();
         void FixateTarget(Unit* taunter);
         ThreatManager& getThreatManager() { return GetCombatData()->threatManager; }
@@ -2204,6 +2172,11 @@ class Unit : public WorldObject
         HostileRefManager& getHostileRefManager() { return GetCombatData()->hostileRefManager; }
         void SetNoThreatState(bool state) { m_noThreat = state; }
         bool GetNoThreatState() { return m_noThreat; }
+
+        CombatManager& GetCombatManager() { return m_combatManager; }
+        CombatManager const& GetCombatManager() const { return const_cast<Unit*>(this)->m_combatManager; }
+        void TriggerEvadeEvents();
+        void EvadeTimerExpired();
 
         Aura* GetAura(uint32 spellId, SpellEffectIndex effindex);
         Aura* GetAura(AuraType type, SpellFamily family, uint64 familyFlag, ObjectGuid casterGuid = ObjectGuid());
@@ -2278,13 +2251,17 @@ class Unit : public WorldObject
         uint32 MeleeDamageBonusTaken(Unit* caster, uint32 pdamage, WeaponAttackType attType, SpellSchoolMask schoolMask, SpellEntry const* spellProto = nullptr, DamageEffectType damagetype = DIRECT_DAMAGE, uint32 stack = 1, bool flat = true);
 
         bool IsTriggeredAtSpellProcEvent(ProcExecutionData& data, SpellAuraHolder* holder, SpellProcEventEntry const*& spellProcEvent);
+        // only to be used in proc handlers - basepoints is expected to be a MAX_EFFECT_INDEX sized array
+        SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, uint32 triggeredSpellId, Item* castItem, Aura* triggeredByAura, uint32 cooldown);
+        SpellAuraProcResult TriggerProccedSpell(Unit* target, int32* basepoints, SpellEntry const* spellInfo, Item* castItem, Aura* triggeredByAura, uint32 cooldown);
         // Aura proc handlers
         SpellAuraProcResult HandleDummyAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleHasteAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleProcTriggerSpellAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleProcTriggerDamageAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleOverrideClassScriptAuraProc(ProcExecutionData& data);
-        SpellAuraProcResult HandleMendingAuraProc(ProcExecutionData& data);
+        SpellAuraProcResult HandleRaidProcFromChargeAuraProc(ProcExecutionData& data);
+        SpellAuraProcResult HandleRaidProcFromChargeWithValueAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleModCastingSpeedNotStackAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleReflectSpellsSchoolAuraProc(ProcExecutionData& data);
         SpellAuraProcResult HandleModPowerCostSchoolAuraProc(ProcExecutionData& data);
@@ -2311,7 +2288,7 @@ class Unit : public WorldObject
         {
             m_lastManaUseTimer = 5000;
         }
-        bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer != 0; }
+        bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer != 0 && m_lastManaUseTimer != 5000; }
 
         void SetContestedPvP(Player* attackedPlayer = nullptr);
 
@@ -2335,8 +2312,6 @@ class Unit : public WorldObject
 
         void _RemoveAllAuraMods();
         void _ApplyAllAuraMods();
-
-        int32 CalculateSpellDamage(Unit const* target, SpellEntry const* spellProto, SpellEffectIndex effect_index, int32 const* effBasePoints = nullptr);
 
         int32 CalculateAuraDuration(SpellEntry const* spellProto, uint32 effectMask, int32 duration, Unit const* caster);
 
@@ -2422,15 +2397,6 @@ class Unit : public WorldObject
         virtual bool CanWalk() const = 0;
         virtual bool IsFlying() const { return m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING); }
 
-        void TriggerEvadeEvents();
-        void EvadeTimerExpired();
-        bool IsInEvadeMode() const { return m_evadeTimer > 0 || m_evadeMode; }
-        bool IsEvadingHome() const { return m_evadeMode == EVADE_HOME; }
-        bool IsEvadeRegen() const { return (m_evadeTimer > 0 && m_evadeTimer <= 5000) || m_evadeMode; } // Only regen after 5 seconds, or when in permanent evade
-        void StartEvadeTimer() { m_evadeTimer = 10000; } // 10 seconds after which action is taken
-        void StopEvade(); // Stops either timer or evade state
-        void SetEvade(EvadeState state); // Propagated to pets
-
         // Take possession of an unit (pet, creature, ...)
         bool TakePossessOf(Unit* possessed);
 
@@ -2453,10 +2419,14 @@ class Unit : public WorldObject
         void Uncharm(Unit* charmed, uint32 spellId = 0);
 
         // Combat prevention
-        bool CanEnterCombat() { return m_canEnterCombat && !IsEvadingHome(); }
+        bool CanEnterCombat() { return m_canEnterCombat && !GetCombatManager().IsEvadingHome(); }
         void SetCanEnterCombat(bool can) { m_canEnterCombat = can; }
 
-        virtual bool IsIgnoringRangedTargets() { return false; }
+        void SetIgnoreRangedTargets(bool state) { m_ignoreRangedTargets = state; }
+        bool IsIgnoringRangedTargets() { return m_ignoreRangedTargets; }
+
+        void SetSupportThreatOnly(bool state) { m_supportThreatOnly = state; }
+        bool IsSupportThreatOnly() { return m_supportThreatOnly; }
 
         float GetAttackDistance(Unit const* pl) const;
         virtual uint32 GetDetectionRange() const { return 20.f; }
@@ -2484,6 +2454,14 @@ class Unit : public WorldObject
 
         virtual uint32 GetSpellRank(SpellEntry const* spellInfo);
 
+        Player* GetNextRandomRaidMember(float radius, AuraType noAuraType);
+
+        bool HasOverrideScript(uint32 id) const;
+        Aura* GetOverrideScript(uint32 id) const;
+        void RegisterOverrideScriptAura(Aura* aura, uint32 id, bool apply);
+        void RegisterScriptedLocationAura(Aura* aura, AuraScriptLocation location, bool apply); // Spell scripting - requires correctly set spell_affect
+        std::vector<Aura*>& GetScriptedLocationAuras(AuraScriptLocation location) { return m_scriptedLocations[location]; }
+
     protected:
 
         struct WeaponDamageInfo
@@ -2509,8 +2487,6 @@ class Unit : public WorldObject
         void _UpdateAutoRepeatSpell();
         bool m_AutoRepeatFirstCast;
 
-        EvadeState GetEvade() const { return m_evadeMode; }
-
         uint32 m_attackTimer[MAX_ATTACK];
 
         float m_createStats[MAX_STATS];
@@ -2524,6 +2500,8 @@ class Unit : public WorldObject
         SpellAuraHolderMap::iterator m_spellAuraHoldersUpdateIterator; // != end() in Unit::m_spellAuraHolders update and point to next element
         AuraList m_deletedAuras;                            // auras removed while in ApplyModifier and waiting deleted
         SpellAuraHolderList m_deletedHolders;
+        std::map<uint32, Aura*> m_classScripts;
+        std::vector<Aura*> m_scriptedLocations[SCRIPT_LOCATION_MAX];
 
         // Store Auras for which the target must be tracked
         TrackedAuraTargetMap m_trackedAuraTargets[MAX_TRACKED_AURA_TYPES];
@@ -2565,6 +2543,7 @@ class Unit : public WorldObject
         bool m_isSpawningLinked;
 
         CombatData* m_combatData;
+        CombatManager m_combatManager;
 
         // base speeds set by model/template
         float m_baseSpeedWalk;
@@ -2616,7 +2595,6 @@ class Unit : public WorldObject
         static void JustKilledCreature(Unit* killer, Creature* victim, Player* responsiblePlayer);
 
         uint32 m_state;                                     // Even derived shouldn't modify
-        uint32 m_CombatTimer;
 
         AttackerSet m_attackers;                            // Used to help know who is currently attacking this unit
         Spell* m_currentSpells[CURRENT_MAX_SPELL];
@@ -2651,18 +2629,11 @@ class Unit : public WorldObject
 
         bool m_alwaysHit;
         bool m_noThreat;
+        bool m_supportThreatOnly;
+        bool m_ignoreRangedTargets;                         // Ignores ranged targets when picking someone to attack
 
         // guard to prevent chaining extra attacks
         bool m_extraAttacksExecuting;
-
-        uint32 m_evadeTimer; // Used for evade during combat when mob is not running home and target isnt reachable
-        EvadeState m_evadeMode; // Used for evade during running home
-
-        // invisibility data
-        uint32 m_invisibilityMask;
-        uint32 m_detectInvisibilityMask; // is inherited from controller in PC case
-        int32 m_invisibilityValues[INVISIBILITY_MAX];
-        int32 m_invisibilityDetectValues[INVISIBILITY_MAX];
 
         uint64 m_auraUpdateMask;
 

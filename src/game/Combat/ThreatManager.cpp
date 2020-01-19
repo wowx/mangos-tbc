@@ -31,14 +31,20 @@
 //==============================================================
 
 // The pHatingUnit is not used yet
-float ThreatCalcHelper::CalcThreat(Unit* hatedUnit, Unit* /*pHatingUnit*/, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell)
+float ThreatCalcHelper::CalcThreat(Unit* hatedUnit, Unit* hatingUnit, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell, bool assist)
 {
     // all flat mods applied early
     if (!threat)
-        return 0.0f;
+        return 0.f;
 
     if (hatedUnit->GetNoThreatState()) // some NPCs cause no threat
-        return 0.0f;
+        return 0.f;
+
+    if (hatingUnit->GetTypeId() == TYPEID_PLAYER) // players have entries with 0 threat during charm
+        return 0.f;
+
+    if (!assist && hatedUnit->IsSupportThreatOnly())
+        return 0.f;
 
     if (threatSpell)
     {
@@ -132,14 +138,6 @@ void HostileReference::addThreat(float mod)
     {
         ThreatRefStatusChangeEvent event(UEV_THREAT_REF_THREAT_CHANGE, this, mod);
         fireStatusChanged(event);
-    }
-
-    if (isValid() && mod >= 0)
-    {
-        Unit* target = getTarget();
-        Unit* victim_owner = target->GetOwner();
-        if (victim_owner && victim_owner->isAlive() && getSource()->getOwner()->CanAttack(victim_owner))
-            getSource()->addThreat(victim_owner, 0.0f);     // create a threat to the owner of a pet, if the pet attacks
     }
 }
 
@@ -339,7 +337,7 @@ HostileReference* ThreatContainer::selectNextVictim(Unit* attacker, HostileRefer
     bool found = false;
     bool onlySecondChoiceTargetsFound = false;
     bool checkedCurrentVictim = false;
-    bool suppressRanged = attacker->hasUnitState(UNIT_STAT_ROOT) && !attacker->AI()->IsRangedUnit();
+    bool suppressRanged = attacker->IsIgnoringRangedTargets();
     bool currentVictimInMelee = true;
     if (suppressRanged && currentVictim)
         currentVictimInMelee = attacker->CanReachWithMeleeAttack(currentVictim->getTarget());
@@ -355,37 +353,38 @@ HostileReference* ThreatContainer::selectNextVictim(Unit* attacker, HostileRefer
         MANGOS_ASSERT(target);                             // if the ref has status online the target must be there!
 
         bool isInMelee = attacker->CanReachWithMeleeAttack(target);
-        // Some bosses keep ranged targets in threat list but do not pick them with generic threat choice
-        if (!isInMelee)
-        {
-            if (attacker->IsIgnoringRangedTargets())
-            {
-                ++iter;
-                continue;
-            }
-        }
-
         if (currentVictim) // select 1.3/1.1 better target in comparison current target
         {
-
-
             // normal case: pCurrentRef is still valid and most hated
             if (currentVictim == currentRef)
             {
+                if (suppressRanged && !currentVictimInMelee)
+                {
+                    ++iter;
+                    continue;
+                }
                 found = true;
                 break;
             }
 
-            if (currentRef->GetTauntState() > currentVictim->GetTauntState())
+            if (currentRef->GetTauntState() > currentVictim->GetTauntState()) // taunt overrides root skipping
             {
                 found = true;
                 break;
             }
 
-            if (suppressRanged && isInMelee && !currentVictimInMelee) // suppress ranged when rooted
+            if (suppressRanged) // suppress ranged when rooted
             {
-                found = true;
-                break;
+                if (!isInMelee) // if current ref is not in melee - skip it
+                {
+                    ++iter;
+                    continue;
+                }
+                else if (!currentVictimInMelee)
+                {
+                    found = true;
+                    break;
+                }
             }
 
             if (currentRef->GetHostileState() > currentVictim->GetHostileState())
@@ -410,7 +409,7 @@ HostileReference* ThreatContainer::selectNextVictim(Unit* attacker, HostileRefer
                 break;                                  // for selecting alive targets
             }
         }
-        else                                            // select any
+        else if (!suppressRanged || isInMelee) // select any
         {
             found = true;
             break;
@@ -443,7 +442,7 @@ void ThreatManager::clearReferences()
 
 //============================================================
 
-void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell)
+void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchoolMask schoolMask, SpellEntry const* threatSpell, bool assist)
 {
     // function deals with adding threat and adding players and pets into ThreatList
     // mobs, NPCs, guards have ThreatList and HateOfflineList
@@ -462,7 +461,7 @@ void ThreatManager::addThreat(Unit* victim, float threat, bool crit, SpellSchool
     if (!victim->isAlive() || !getOwner()->isAlive())
         return;
 
-    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, threat, crit, schoolMask, threatSpell);
+    float calculatedThreat = ThreatCalcHelper::CalcThreat(victim, iOwner, threat, crit, schoolMask, threatSpell, assist);
 
     if (calculatedThreat > 0.0f)
     {
@@ -488,11 +487,13 @@ void ThreatManager::addThreatDirectly(Unit* victim, float threat)
 
     if (!ref)                                               // there was no ref => create a new one
     {
-        // threat has to be 0 here
-        HostileReference* hostileReference = new HostileReference(victim, this, 0);
+        HostileReference* hostileReference = new HostileReference(victim, this, 0); // threat has to be 0 here
         iThreatContainer.addReference(hostileReference);
-        hostileReference->addThreat(threat);                // now we add the real threat
+        hostileReference->addThreat(threat); // now we add the real threat
         getOwner()->TriggerAggroLinkingEvent(victim);
+        Unit* victim_owner = victim->GetOwner();
+        if (victim_owner && victim_owner->isAlive() && getOwner()->CanAttack(victim_owner))
+            addThreat(victim_owner, 0.0f);     // create a threat to the owner of a pet, if the pet attacks
         if (victim->GetTypeId() == TYPEID_PLAYER && static_cast<Player*>(victim)->isGameMaster())
             hostileReference->setOnlineOfflineState(false); // GM is always offline
     }
@@ -514,7 +515,7 @@ void ThreatManager::modifyAllThreatPercent(int32 threatPercent)
 
 void ThreatManager::UpdateContainers()
 {
-    iThreatContainer.update(getOwner()->hasUnitState(UNIT_STAT_ROOT) && !getOwner()->AI()->IsRangedUnit());
+    iThreatContainer.update(getOwner()->IsIgnoringRangedTargets());
 }
 
 Unit* ThreatManager::getHostileTarget()
@@ -594,6 +595,8 @@ void ThreatManager::setCurrentVictim(HostileReference* hostileReference)
 
 void ThreatManager::setCurrentVictimByTarget(Unit* target)
 {
+    if (iCurrentVictim && target == iCurrentVictim->getTarget())
+        return;
     if (HostileReference* ref = iThreatContainer.getReferenceByTarget(target))
         setCurrentVictim(ref);
 }
