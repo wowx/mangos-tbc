@@ -349,6 +349,17 @@ struct GraveYardData
 typedef std::multimap < uint32 /*zoneId*/, GraveYardData > GraveYardMap;
 typedef std::pair<GraveYardMap::const_iterator, GraveYardMap::const_iterator> GraveYardMapBounds;
 
+struct WorldSafeLocsEntry
+{
+    uint32    ID;
+    uint32    map_id;
+    float     x;
+    float     y;
+    float     z;
+    float     o;
+    char*     name;
+};
+
 struct QuestgiverGreeting
 {
     std::string text;
@@ -656,6 +667,7 @@ class ObjectMgr
         void SetGraveYardLinkTeam(uint32 id, uint32 zoneId, Team team);
         void LoadGraveyardZones();
         GraveYardData const* FindGraveYardData(uint32 id, uint32 zoneId) const;
+        void LoadWorldSafeLocs() const;
 
         AreaTrigger const* GetAreaTrigger(uint32 trigger) const
         {
