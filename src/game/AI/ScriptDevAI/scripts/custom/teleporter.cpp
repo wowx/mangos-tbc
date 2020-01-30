@@ -7,7 +7,7 @@ Authors:
 Year:
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 
 #define MAINMENU "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t <= Main Menu"
 #define MORE "|TInterface/ICONS/Spell_chargepositive:30:30:-18:0|t More =>"

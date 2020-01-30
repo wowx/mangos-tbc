@@ -8,7 +8,7 @@
 <--------------------------------------------------------------------------->
 */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include "Globals/ObjectMgr.h"
 
 void CreatePet(Player* player, Creature* creature, uint32 entry)

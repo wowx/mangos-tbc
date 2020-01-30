@@ -7,7 +7,7 @@ Authors: TC devs, Morenn, Casso
 Year: 2010
 EndScriptData */
 
-#include "AI/ScriptDevAI/include/precompiled.h"
+#include "AI/ScriptDevAI/include/sc_common.h"
 #include <cstring>
 
 #define BET 500000
