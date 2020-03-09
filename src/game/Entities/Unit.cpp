@@ -2815,7 +2815,7 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell, 
                      die.chance[UNIT_COMBAT_DIE_RESIST], die.chance[UNIT_COMBAT_DIE_DEFLECT]);
 
     // Memorize heartbeat resist chance if needed:
-    if (heartbeatResistChance)
+    if (heartbeatResistChance && spell->HasAttribute(SPELL_ATTR_HEARTBEAT_RESIST_CHECK))
         *heartbeatResistChance = (die.chance[UNIT_COMBAT_DIE_RESIST] + die.chance[UNIT_COMBAT_DIE_MISS]);
 
     const uint32 random = urand(1, 10000);
@@ -10170,7 +10170,7 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
             CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         }
-        else
+        else if (GetTypeId() != TYPEID_PLAYER || !static_cast<Player*>(this)->GetSession()->isLogingOut())
             RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
 
         SetImmobilizedState(apply, true);
@@ -10199,20 +10199,24 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
 void Unit::SetImmobilizedState(bool apply, bool stun)
 {
     const uint32 state = (stun ? UNIT_STAT_STUNNED : UNIT_STAT_ROOT);
+    const bool logout = (GetTypeId() == TYPEID_PLAYER && static_cast<Player*>(this)->GetSession()->isLogingOut());
+
     if (apply)
     {
         addUnitState(state);
 
         if (!IsClientControlled())
             StopMoving();
-        SendMoveRoot(true);
+
+        if (!logout)
+            SendMoveRoot(true);
     }
     else
     {
         clearUnitState(state);
 
         // Prevent giving ability to move if more immobilizers are active
-        if (!IsImmobilizedState())
+        if (!IsImmobilizedState() && !logout)
             SendMoveRoot(false);
     }
 }
