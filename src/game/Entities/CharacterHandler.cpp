@@ -35,6 +35,7 @@
 #include "Database/DatabaseImpl.h"
 #include "Tools/PlayerDump.h"
 #include "Social/SocialMgr.h"
+#include "GMTickets/GMTicketMgr.h"
 #include "Util.h"
 #include "Tools/Language.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
@@ -719,6 +720,9 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     // Send friend list online status for other players
     sSocialMgr.SendFriendStatus(pCurrChar, FRIEND_ONLINE, pCurrChar->GetObjectGuid(), true);
 
+    // GM ticket notifications
+    sTicketMgr.OnPlayerOnlineState(*pCurrChar, true);
+
     // Place character in world (and load zone) before some object loading
     pCurrChar->LoadCorpse();
 
@@ -888,6 +892,9 @@ void WorldSession::HandlePlayerReconnect()
     // Send friend list online status for other players
     sSocialMgr.SendFriendStatus(_player, FRIEND_ONLINE, _player->GetObjectGuid(), true);
 
+    // GM ticket notifications
+    sTicketMgr.OnPlayerOnlineState(*_player, true);
+
     // show time before shutdown if shutdown planned.
     if (sWorld.IsShutdowning())
         sWorld.ShutdownMsg(true, _player);
@@ -914,9 +921,6 @@ void WorldSession::HandlePlayerReconnect()
     // Undo flags and states set by logout:
     if (logout)
     {
-        if (_player->getStandState() == UNIT_STAND_STATE_SIT)
-            _player->SetStandState(UNIT_STAND_STATE_STAND);
-
         if (_player->HasMovementFlag(MOVEFLAG_ROOT) && !_player->IsImmobilizedState())
             _player->SendMoveRoot(false);
 
@@ -929,6 +933,9 @@ void WorldSession::HandlePlayerReconnect()
 
     // send mirror timers
     _player->SendMirrorTimers(true);
+
+    if (_player->IsStandState() && !_player->hasUnitState(UNIT_STAT_STUNNED))
+        _player->SetStandState(UNIT_STAND_STATE_STAND);
 
     m_playerLoading = false;
 }
