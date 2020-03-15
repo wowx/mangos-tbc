@@ -209,7 +209,7 @@ struct go_screaming_hall_door : public GameObjectAI
             {
                 m_go->GetMap()->ExecuteDistWorker(m_go, 35.0f, [&](Player * player)
                 {
-                    m_go->Use(player);
+                    // m_go->Use(player);
                     m_doorOpen = true;
                 });
             }
