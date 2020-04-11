@@ -5039,7 +5039,7 @@ void ObjectMgr::LoadGossipText()
     sLog.outString(">> Loaded %u npc texts", count);
     sLog.outString();
 
-    result.reset(WorldDatabase.Query("SELECT Id,Prob0,Prob1,Prob2,Prob3,Prob4,Prob5,Prob6,Prob7,BroadcastTextId1,BroadcastTextId2,BroadcastTextId3,BroadcastTextId4,BroadcastTextId5,BroadcastTextId6,BroadcastTextId7 FROM npc_text_broadcast_text"));
+    result.reset(WorldDatabase.Query("SELECT Id,Prob0,Prob1,Prob2,Prob3,Prob4,Prob5,Prob6,Prob7,BroadcastTextId0,BroadcastTextId1,BroadcastTextId2,BroadcastTextId3,BroadcastTextId4,BroadcastTextId5,BroadcastTextId6,BroadcastTextId7 FROM npc_text_broadcast_text"));
     
     count = 0;
     if (!result)
@@ -7912,6 +7912,46 @@ bool isValidString(const std::wstring& wstr, uint32 strictMask, bool numericOrSp
     }
 
     return false;
+}
+
+bool ObjectMgr::CheckPublicMessageLanguage(const std::string& message)
+{
+    LanguageType lt = GetRealmLanguageType(false);
+
+    if (lt == LT_ANY)
+        return true;
+
+    std::wstring wstr;
+
+    if (!Utf8toWStr(message, wstr))
+        return false;
+
+    for (wchar_t c : wstr)
+    {
+        if (c <= 127)                               // Whitelisted in all locales (basic ASCII)
+            continue;
+        else
+        {
+            if (lt & LT_EXTENDEN_LATIN)             // Extended latin locales
+            {
+                if (!isExtendedLatinCharacter(c))
+                    return false;
+            }
+
+            if (lt & LT_CYRILLIC)                   // Cyrillic locales
+            {
+                if (!isCyrillicCharacter(c))
+                    return false;
+            }
+
+            if (lt & LT_EAST_ASIA)                  // East asian locales
+            {
+                if (!isEastAsianCharacter(c))
+                    return false;
+            }
+        }
+    }
+    return true;
 }
 
 uint8 ObjectMgr::CheckPlayerName(const std::string& name, bool create)

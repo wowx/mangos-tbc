@@ -151,6 +151,7 @@ class Channel
         bool IsStatic() const { return m_static; }
         bool IsAnnounce() const { return m_announce; }
         bool IsLFG() const { return (GetFlags() & CHANNEL_FLAG_LFG) != 0; }
+        inline bool IsPublic() const { return (IsConstant() || IsStatic()); }
         std::string GetPassword() const { return m_password; }
         void SetPassword(const std::string& npassword) { m_password = npassword; }
         void SetAnnounce(bool nannounce) { m_announce = nannounce; }
@@ -275,12 +276,14 @@ class Channel
     private:
         bool        m_announce;
         bool        m_moderate;
-        bool        m_static;
         std::string m_name;
         std::string m_password;
         uint8       m_flags;
         uint32      m_channelId;
         ObjectGuid  m_ownerGuid;
+
+        bool        m_static;
+        bool        m_realmzone;
 
         typedef     std::map<ObjectGuid, PlayerInfo> PlayerList;
         PlayerList  m_players;

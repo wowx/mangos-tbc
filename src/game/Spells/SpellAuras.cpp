@@ -1276,12 +1276,6 @@ void Aura::TriggerSpell()
 //                    case 27746: break;
 //                    // Steam Tank Passive
 //                    case 27747: break;
-                    case 27808:                             // Frost Blast
-                    {
-                        int32 bpDamage = triggerTarget->GetMaxHealth() * 26 / 100;
-                        triggerTarget->CastCustomSpell(triggerTarget, 29879, &bpDamage, nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, nullptr, this, casterGUID);
-                        return;
-                    }
                     // Detonate Mana
                     case 27819:
                     {
@@ -4244,18 +4238,19 @@ void Aura::HandleFeignDeath(bool apply, bool Real)
             // Players and player-controlled units do an additional success roll for this aura on application
             const SpellEntry* entry = GetSpellProto();
             const SpellSchoolMask schoolMask = GetSpellSchoolMask(entry);
-            auto attackers = target->getAttackers();
-            for (auto attacker : attackers)
+
+            float resist = 0;
+
+            for (auto attacker : target->getAttackers())
             {
                 if (attacker && !attacker->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
                 {
-                    if (target->MagicSpellHitResult(attacker, entry, schoolMask) != SPELL_MISS_NONE)
-                    {
-                        success = false;
-                        break;
-                    }
+                    const float chance = target->CalculateSpellMissChance(attacker, schoolMask, entry);
+                    resist = ((chance > resist) ? chance : resist);
                 }
             }
+
+            success = !roll_chance_f(resist);
         }
 
         if (success)
@@ -8929,14 +8924,14 @@ void SpellAuraHolder::SetHeartbeatResist(uint32 chance, int32 originalDuration, 
     // Main points in common cited by independent sources:
     // * Break attempts become more frequent as hit count rises
     // * Break chance becomes higher as hit count rises
-    m_heartbeatResistChance = std::min(chance * (1 + drLevel), 10000u);
-    m_heartbeatResistInterval = std::max(1000, int32(float(originalDuration) / (2 + drLevel)));
+    m_heartbeatResistChance = (0.01f * chance * (1 + drLevel));
+    m_heartbeatResistInterval = std::max(1000, int32(uint32(originalDuration) / (2 + drLevel)));
     m_heartbeatResistTimer = m_heartbeatResistInterval;
 }
 
 void SpellAuraHolder::UpdateHeartbeatResist(uint32 diff)
 {
-    if (!m_heartbeatResistChance || !m_heartbeatResistInterval || m_heartbeatResistTimer <= 0)
+    if (m_heartbeatResistChance == 0.0f || !m_heartbeatResistInterval || m_heartbeatResistTimer <= 0)
         return;
 
     m_heartbeatResistTimer -= diff;
@@ -8947,10 +8942,9 @@ void SpellAuraHolder::UpdateHeartbeatResist(uint32 diff)
 
         DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "UpdateHeartbeatResist: Update tick for spell %u with %i ms interval", m_spellProto->Id, m_heartbeatResistInterval);
 
-        const uint32 random = urand(1, 10000);
-        const bool resist = (random <= m_heartbeatResistChance);
+        const bool resist = roll_chance_f(m_heartbeatResistChance);
 
-        DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "UpdateHeartbeatResist: Rolled %u, result: %s (chance %u)", random, (resist ? "RESIST" : "HIT"), m_heartbeatResistChance);
+        DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "UpdateHeartbeatResist: Result: %s (chance %.2f)", (resist ? "RESIST" : "HIT"), double(m_heartbeatResistChance));
 
         if (resist)
         {

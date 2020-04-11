@@ -90,6 +90,10 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
     if (zones_count > 10)
         return;                                             // can't be received from real client or broken packet
 
+    // GM ticket hook shift+click to read
+    if (sTicketMgr.HookGMTicketWhoQuery(player_name, GetPlayer()))
+        return;
+
     for (uint32 i = 0; i < zones_count; ++i)
     {
         uint32 temp;
@@ -102,9 +106,6 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
 
     if (str_count > 4)
         return;                                             // can't be received from real client or broken packet
-
-    // GM ticket chat: who request pre-hook
-    std::string gmticket_tag = sTicketMgr.HookGMTicketWhoQueryPreHook(player_name, GetPlayer());
 
     DEBUG_LOG("Minlvl %u, maxlvl %u, name %s, guild %s, racemask %u, classmask %u, zones %u, strings %u", level_min, level_max, player_name.c_str(), guild_name.c_str(), racemask, classmask, zones_count, str_count);
 
@@ -243,9 +244,6 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recv_data)
         if (!s_show)
             continue;
 
-        // GM ticket chat: who request post-hook
-        pname = sTicketMgr.HookGMTicketWhoQueryPostHook(gmticket_tag, player_name, pname);
-
         // 49 is maximum player count sent to client
         if (++matchcount > 49)
             continue;
@@ -297,29 +295,16 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket& /*recv_data*/)
         return;
     }
 
-    Player* thisPlayer = GetPlayer();
-
-    // Set flags and states set by logout:
-    {
-        if (thisPlayer->getStandState() == UNIT_STAND_STATE_STAND || thisPlayer->getStandState() == UNIT_STAND_STATE_KNEEL)
-        {
-            float height = thisPlayer->GetMap()->GetHeight(thisPlayer->GetPositionX(), thisPlayer->GetPositionY(), thisPlayer->GetPositionZ());
-
-            if ((thisPlayer->GetPositionZ() < height + 0.1f) && !thisPlayer->IsInWater())
-                thisPlayer->SetStandState(UNIT_STAND_STATE_SIT);
-        }
-
-        if (!thisPlayer->HasMovementFlag(MOVEFLAG_ROOT))
-            thisPlayer->SendMoveRoot(true);
-
-        thisPlayer->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
-    }
-
     WorldPacket data(SMSG_LOGOUT_RESPONSE, 5);
     data << uint32(0);
     data << uint8(0);
     SendPacket(data);
     LogoutRequest(time(nullptr));
+
+    // Set flags and states set by logout:
+    GetPlayer()->SetStunnedByLogout(true);
+
+    DEBUG_LOG("WORLD: Sent SMSG_LOGOUT_RESPONSE Message");
 }
 
 void WorldSession::HandlePlayerLogoutOpcode(WorldPacket& /*recv_data*/)
@@ -336,21 +321,10 @@ void WorldSession::HandleLogoutCancelOpcode(WorldPacket& /*recv_data*/)
     WorldPacket data(SMSG_LOGOUT_CANCEL_ACK, 0);
     SendPacket(data);
 
-    Player* thisPlayer = GetPlayer();
-
     // Undo flags and states set by logout:
-    {
-        if (thisPlayer->getStandState() == UNIT_STAND_STATE_SIT)
-            thisPlayer->SetStandState(UNIT_STAND_STATE_STAND);
+    GetPlayer()->SetStunnedByLogout(false);
 
-        if (thisPlayer->HasMovementFlag(MOVEFLAG_ROOT) && !thisPlayer->IsImmobilizedState())
-            thisPlayer->SendMoveRoot(false);
-
-        if (!thisPlayer->hasUnitState(UNIT_STAT_STUNNED))
-            thisPlayer->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
-    }
-
-    DEBUG_LOG("WORLD: sent SMSG_LOGOUT_CANCEL_ACK Message");
+    DEBUG_LOG("WORLD: Sent SMSG_LOGOUT_CANCEL_ACK Message");
 }
 
 void WorldSession::HandleTogglePvP(WorldPacket& recv_data)

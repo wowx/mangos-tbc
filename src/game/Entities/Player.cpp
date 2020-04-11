@@ -1816,6 +1816,26 @@ ChatTagFlags Player::GetChatTag() const
     return tag;
 }
 
+bool Player::isAcceptTickets() const
+{
+    AccountTypes level = GetSession()->GetSecurity();
+
+    if (level > SEC_PLAYER && level >= sWorld.getConfig(CONFIG_UINT32_GM_LEVEL_ACCEPT_TICKETS))
+        return (m_ExtraFlags & PLAYER_EXTRA_GM_ACCEPT_TICKETS);
+
+    return false;
+}
+
+bool Player::isGMChat() const
+{
+    AccountTypes level = GetSession()->GetSecurity();
+
+    if (level > SEC_PLAYER && level >= sWorld.getConfig(CONFIG_UINT32_GM_LEVEL_CHAT))
+        return (m_ExtraFlags & PLAYER_EXTRA_GM_CHAT);
+
+    return false;
+}
+
 bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options /*=0*/, AreaTrigger const* at /*=nullptr*/)
 {
     // do not let charmed players/creatures teleport
@@ -2795,7 +2815,7 @@ void Player::InitStatsForLevel(bool reapplyMods)
                UNIT_FLAG_STUNNED        | UNIT_FLAG_IN_COMBAT    | UNIT_FLAG_DISARMED         |
                UNIT_FLAG_CONFUSED       | UNIT_FLAG_FLEEING      | UNIT_FLAG_POSSESSED        |
                UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_SKINNABLE    | UNIT_FLAG_MOUNT            |
-               UNIT_FLAG_TAXI_FLIGHT);
+               UNIT_FLAG_TAXI_FLIGHT    | UNIT_FLAG_UNK_29);
     SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);    // must be set
 
     // cleanup player flags (will be re-applied if need at aura load), to avoid have ghost flag without ghost aura, for example.
@@ -4434,7 +4454,7 @@ void Player::BuildPlayerRepop()
     // convert player body to ghost
     SetHealth(1);
 
-    if (!IsImmobilizedState() && !GetSession()->isLogingOut())
+    if (!IsImmobilizedState())
         SendMoveRoot(false);
 
     // BG - remove insignia related
@@ -4950,6 +4970,25 @@ void Player::UpdateLocalChannels(uint32 newZone)
         }
     }
     DEBUG_LOG("Player: channels cleaned up!");
+}
+
+void Player::JoinLFGChannel()
+{
+    // Find built-in LFG channel and try joining it
+    for (uint32 id = 0; id < sChatChannelsStore.GetNumRows(); ++id)
+    {
+        if (ChatChannelsEntry const* entry = sChatChannelsStore.LookupEntry(id))
+        {
+            if (entry->flags & 0x40000)                     // CHANNEL_DBC_FLAG_LFG
+            {
+                if (ChannelMgr* cMgr = channelMgr(GetTeam()))
+                {
+                    if (Channel* channel = cMgr->GetJoinChannel(entry->pattern[m_session->GetSessionDbcLocale()], id))
+                        channel->Join(this, "");
+                }
+            }
+        }
+    }
 }
 
 void Player::LeaveLFGChannel()
@@ -9736,7 +9775,7 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
             {
                 // May be here should be more stronger checks; STUNNED checked
                 // ROOT, CONFUSED, DISTRACTED, FLEEING this needs to be checked.
-                if (hasUnitState(UNIT_STAT_STUNNED))
+                if (IsStunned())
                     return EQUIP_ERR_YOU_ARE_STUNNED;
 
                 // do not allow equipping gear except weapons, offhands, projectiles, relics in

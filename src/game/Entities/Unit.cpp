@@ -644,10 +644,10 @@ void Unit::SendHeartBeat()
 
 void Unit::SendMoveRoot(bool state, bool broadcastOnly)
 {
-    const Player* player = GetClientControlling();
+    const Player* client = GetClientControlling();
 
     // Apply flags in-place when unit currently is not controlled by a player
-    if (!player && !broadcastOnly)
+    if (!client && !broadcastOnly)
     {
         if (state)
         {
@@ -660,7 +660,7 @@ void Unit::SendMoveRoot(bool state, bool broadcastOnly)
 
     const PackedGuid &guid = GetPackGUID();
     // Pre-Wrath spline root: when unit is currently not controlled by a player, or broadcasting to others
-    if (!player || broadcastOnly)
+    if (!client || broadcastOnly)
     {
         WorldPacket data(state ? SMSG_SPLINE_MOVE_ROOT : SMSG_SPLINE_MOVE_UNROOT, guid.size());
         data << guid;
@@ -672,7 +672,7 @@ void Unit::SendMoveRoot(bool state, bool broadcastOnly)
         WorldPacket data(state ? SMSG_FORCE_MOVE_ROOT : SMSG_FORCE_MOVE_UNROOT, guid.size() + 4);
         data << guid;
         data << uint32(0);
-        player->GetSession()->SendPacket(data);
+        client->GetSession()->SendPacket(data);
     }
 }
 
@@ -799,7 +799,7 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
     if (damagetype != DOT && damagetype != INSTAKILL)
     {
         // Since patch 1.5.0 sitting characters always stand up on attack (even if stunned)
-        if (!victim->IsStandState() && (victim->GetTypeId() == TYPEID_PLAYER || !victim->hasUnitState(UNIT_STAT_STUNNED)))
+        if (!victim->IsStandState() && (victim->GetTypeId() == TYPEID_PLAYER || !victim->IsStunned()))
             victim->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
@@ -8482,7 +8482,7 @@ bool Unit::IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
         return true;
 
     // If a mob or player is stunned he will not be able to detect stealth
-    if (u->hasUnitState(UNIT_STAT_STUNNED) && (u != this))
+    if (u->IsStunned() && (u != this))
         return false;
 
     // set max distance
@@ -8672,9 +8672,20 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced, float ratio)
     SetSpeedRate(mtype, speed * ratio, forced);
 }
 
+float Unit::GetSpeedInMotion() const
+{
+    return (movespline->Finalized() ? GetSpeed(m_movementInfo.GetSpeedType()) : movespline->Speed());
+}
+
 float Unit::GetSpeed(UnitMoveType mtype) const
 {
     return m_speed_rate[mtype] * baseMoveSpeed[mtype];
+}
+
+float Unit::GetSpeedRateInMotion() const
+{
+    const UnitMoveType type = m_movementInfo.GetSpeedType();
+    return (movespline->Finalized() ? GetSpeedRate(type) : (movespline->Speed() / GetSpeed(type)));
 }
 
 struct SetSpeedRateHelper
@@ -9029,8 +9040,11 @@ DiminishingLevels Unit::GetDiminishing(DiminishingGroup group)
         if (!i.hitTime)
             return DIMINISHING_LEVEL_1;
 
+        const bool pvp = (GetTypeId() == TYPEID_PLAYER);
+        const bool diminished = IsDiminishingReturnsGroupDurationDiminished(group, pvp);
+
         // If enough time has passed sinc the last spell from this group was casted - reset the count
-        if (i.stack == 0 && WorldTimer::getMSTimeDiff(i.hitTime, WorldTimer::getMSTime()) > GetDiminishingReturnsGroupResetTime(group, i.lastDuration, (GetTypeId() == TYPEID_PLAYER)))
+        if (diminished && i.stack == 0 && WorldTimer::getMSTimeDiff(i.hitTime, WorldTimer::getMSTime()) > (15 * IN_MILLISECONDS))
         {
             i.hitCount = DIMINISHING_LEVEL_1;
             return DIMINISHING_LEVEL_1;
@@ -9057,9 +9071,6 @@ void Unit::IncrDiminishing(DiminishingGroup group, uint32 duration, bool pvp)
             i.hitCount += 1;
         else
             i.hitCount = DIMINISHING_LEVEL_IMMUNE;
-
-        if (i.lastDuration != duration)
-            i.lastDuration = duration;
 
         return;
     }
@@ -10161,24 +10172,22 @@ bool Unit::SetFleeing(bool apply, ObjectGuid casterGuid/* = ObjectGuid()*/, uint
     return false;
 }
 
-bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
+bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID, bool logout/* = false*/)
 {
-    if (apply != HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED))
+    const bool initial = (apply && !IsStunned());
+    const bool update = (apply != hasUnitState(logout ? UNIT_STAT_LOGOUT_TIMER : UNIT_STAT_STUNNED));
+
+    if (initial || update || (logout && !apply))
     {
-        if (apply)
-        {
+        if (initial)
             CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
-            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
-        }
-        else if (GetTypeId() != TYPEID_PLAYER || !static_cast<Player*>(this)->GetSession()->isLogingOut())
-            RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
 
-        SetImmobilizedState(apply, true);
+        SetImmobilizedState(apply, true, logout);
 
-        if (const bool requireTargetChange = (!IsControlledByPlayer() && AI()))
+        if (initial)
         {
             // Non-client controlled unit with an AI should drop target
-            if (apply)
+            if (const bool requireTargetChange = (!IsControlledByPlayer() && AI()))
             {
                 if (!GetTargetGuid().IsEmpty())
                     SetTargetGuid(ObjectGuid());
@@ -10189,17 +10198,41 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID)
             }
         }
 
-        ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
+        ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED, hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_LOGOUT_TIMER));
+
+        if (!logout)
+            ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29, (IsStunned() || IsFeigningDeath()));
 
         return true;
     }
     return false;
 }
 
-void Unit::SetImmobilizedState(bool apply, bool stun)
+bool Unit::SetStunnedByLogout(bool apply)
 {
-    const uint32 state = (stun ? UNIT_STAT_STUNNED : UNIT_STAT_ROOT);
-    const bool logout = (GetTypeId() == TYPEID_PLAYER && static_cast<Player*>(this)->GetSession()->isLogingOut());
+    if (SetStunned(apply, ObjectGuid(), 0, true))
+    {
+        // Sit down when eligible:
+        if (apply)
+        {
+            if (IsStandState())
+            {
+                if (!m_movementInfo.HasMovementFlag(MovementFlags(movementFlagsMask | MOVEFLAG_SWIMMING | MOVEFLAG_SPLINE_ENABLED)))
+                    SetStandState(UNIT_STAND_STATE_SIT);
+            }
+        }
+        // Stand up on cancel
+        else if (getStandState() == UNIT_STAND_STATE_SIT)
+            SetStandState(UNIT_STAND_STATE_STAND);
+
+        return true;
+    }
+    return false;
+}
+
+void Unit::SetImmobilizedState(bool apply, bool stun, bool logout)
+{
+    const uint32 state = (stun ? (logout ? UNIT_STAT_LOGOUT_TIMER : UNIT_STAT_STUNNED) : UNIT_STAT_ROOT);
 
     if (apply)
     {
@@ -10208,15 +10241,14 @@ void Unit::SetImmobilizedState(bool apply, bool stun)
         if (!IsClientControlled())
             StopMoving();
 
-        if (!logout)
-            SendMoveRoot(true);
+        SendMoveRoot(true);
     }
     else
     {
         clearUnitState(state);
 
         // Prevent giving ability to move if more immobilizers are active
-        if (!IsImmobilizedState() && !logout)
+        if (!IsImmobilizedState())
             SendMoveRoot(false);
     }
 }
